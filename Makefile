@@ -7,5 +7,8 @@ all:
 run: all
 	./build/cppsh
 
+test: all
+	./build/tests
+
 clean:
 	rm -rf build

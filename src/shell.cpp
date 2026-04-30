@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1.1
+ * @version 0.2.0
  * @date 2026-04-29
  * 
  * @copyright Copyright (c) 2026
@@ -13,9 +13,11 @@
 
 #include "shell.hpp"
 #include "utils.hpp"
+#include "parser.hpp"
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include <pwd.h>
 #include <unistd.h>
 #include <limits.h>
@@ -40,10 +42,15 @@ void Shell::run() {
         }
 
         //Ignore blank lines
-        if (input.find_first_not_of("/t") == std::string::npos) continue;
+        if (input.find_first_not_of(" \t") == std::string::npos) continue;
 
-        //TODO: parse and execute input
-        std::cout << "Input: " << input << std::endl;
+        cppsh::Command cmd = parser.parse(input);
+        //TODO: execute input
+        std::cout << "Input: ";
+        for(const std::string& arg : cmd.args){
+            std::cout << arg << " ";
+        }
+        std::cout << std::endl;
     }
 }
 

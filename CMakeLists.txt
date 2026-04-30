@@ -10,4 +10,5 @@ add_executable(cppsh
     src/main.cpp
     src/shell.cpp
     lib/utils.cpp
+    lib/parser.cpp
     )

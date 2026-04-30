@@ -7,7 +7,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1.1
+ * @version 0.2.0
  * @date 2026-04-29
  * 
  * @copyright Copyright (c) 2026
@@ -15,6 +15,8 @@
  */
 
  #pragma once
+
+ #include "parser.hpp"
 
  #include <string>
 
@@ -45,6 +47,7 @@
     private:
         std::string m_user; //Current logged in username
         std::string m_hostname; // Machine hostname
+        cppsh::Parser parser; // Command parser obj
 
         /**
          * @brief Builds and prints the shell prompt.

@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.2.0
+ * @version 0.3.0
  * @date 2026-04-29
  * 
  * @copyright Copyright (c) 2026
@@ -14,6 +14,7 @@
 #include "shell.hpp"
 #include "utils.hpp"
 #include "parser.hpp"
+#include "dispatcher.hpp"
 
 #include <iostream>
 #include <string>
@@ -44,13 +45,12 @@ void Shell::run() {
         //Ignore blank lines
         if (input.find_first_not_of(" \t") == std::string::npos) continue;
 
+        //Parse input into Command-type obj
         cppsh::Command cmd = parser.parse(input);
-        //TODO: execute input
-        std::cout << "Input: ";
-        for(const std::string& arg : cmd.args){
-            std::cout << arg << " ";
-        }
-        std::cout << std::endl;
+
+        //Dispatch command 
+        Dispatcher dsptchr;
+        dsptchr.dispatch(cmd);
     }
 }
 

@@ -16,16 +16,9 @@
 #include <vector>
 #include <string>
 
-namespace cppsh {
-    /**
-     * @brief Represents a single parsed command.
-     */
-    //TODO: Redirection support
-    //TODO: Background execution support
-    struct Command {
-        std::vector<std::string> args; //command name and arguments
-    };
+#include "command.hpp"
 
+namespace cppsh {
     /**
      * @class Parser
      * @brief Parses a raw input string into Command struct.
@@ -38,7 +31,7 @@ namespace cppsh {
              * @param input The raw input string from the user.
              * @return A Command struct with args and redirections populated.
              */
-            Command parse(const std::string& input) const;
+            cppsh::Command parse(const std::string& input) const;
 
         private:
             /**

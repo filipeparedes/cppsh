@@ -14,6 +14,7 @@
 #pragma once
 
 #include "command.hpp"
+#include "commands/entry.hpp"
 
 /**
  * @brief Exits the shell.
@@ -21,4 +22,4 @@
  * @param command The parsed command (args ignored).
  * @return Never returns — calls exit(0).
  */
-int builtin_exit(const cppsh::Command& command);
+int builtin_exit(const cppsh::Command& command, ShellContext& context);

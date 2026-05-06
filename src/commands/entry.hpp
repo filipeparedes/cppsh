@@ -28,7 +28,7 @@
  * The handler receives the parsed Command and the shell's runtime ShellContext.
  */
 struct CommandEntry {
-    std::string name;                                               ///< Command name (e.g. "exit", "cd")
-    std::function<int(const cppsh::Command&, ShellContext&)> handler;     ///< Handler function to call on match
-    std::string description;                                        ///< Human-readable description for help
+    std::string name;                                               // Command name (e.g. "exit", "cd")
+    std::function<int(const cppsh::Command&, ShellContext&)> handler;     // Handler function to call on match
+    std::string description;                                        // Human-readable description for help
 };

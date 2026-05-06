@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1
+ * @version 0.2.0
  * @date 2026-05-03
  * 
  * @copyright Copyright (c) 2026
@@ -20,6 +20,7 @@ Dispatcher::Dispatcher() {
     entries = {
     {"exit", builtin_exit, "Exit the shell"},
     {"cd", builtin_cd, "Change directory"},
+    {"history", builtin_history, "List user's input history"}
     };
 }
 

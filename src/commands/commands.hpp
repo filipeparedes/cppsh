@@ -15,3 +15,4 @@
 #pragma once
 
 #include "builtins/exit.hpp"
+#include "builtins/cd.hpp"

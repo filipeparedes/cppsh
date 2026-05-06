@@ -8,8 +8,8 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1
- * @date 2026-05-03
+ * @version 0.2.0
+ * @date 2026-05-07
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -18,6 +18,8 @@
 #pragma once
 
 #include "command.hpp"
+#include "commands/entry.hpp"
+#include "context.hpp"
 #include <vector>
 
 class Dispatcher {
@@ -30,10 +32,11 @@ class Dispatcher {
          * @param cmd -  the Command to dispatch
          * @return The status code
          */
-        int dispatch(const cppsh::Command& cmd);
+        int dispatch(const cppsh::Command& cmd, ShellContext& context);
 
     private:
-        std::vector<cppsh::CommandEntry> entries;
+        std::vector<CommandEntry> entries;
+
 };
 
 

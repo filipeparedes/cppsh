@@ -4,7 +4,7 @@
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.1
+ * @version 0.2.1
  * @date 2026-05-06
  *
  * @copyright Copyright (c) 2026
@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-int builtin_cd(const cppsh::Command& command) {
+int builtin_cd(const cppsh::Command& command, ShellContext& context) {
     std::string dir;
 
     //No argument -> go to HOME, fallback to root
@@ -30,7 +30,7 @@ int builtin_cd(const cppsh::Command& command) {
 
     // Change directory
     if (chdir(dir.c_str()) == -1) {
-        std::cout << "An error occurred trying to change diretory." << std::endl;
+        std::cout << "Couldn't find the directory '" << dir << "'"  << std::endl;
         return 1;
     }
 

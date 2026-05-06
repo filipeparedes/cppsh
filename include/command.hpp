@@ -3,7 +3,7 @@
  * @brief Defines the Command and CommandEntry structs.
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
- * @version 0.1
+ * @version 0.2.0
  * @date 2026-05-03
  * 
  * @copyright Copyright (c) 2026
@@ -24,15 +24,5 @@ namespace cppsh {
     //TODO: Background execution support
     struct Command {
     std::vector<std::string> args; //command name and arguments
-    };
-
-    /**
-     * @brief Represents an entry in the command dispatch table.
-     * 
-     */
-    struct CommandEntry {
-    std::string name;                               //Command name (e.g. "exit", "cd")
-    std::function<int(const Command&)> handler;     //Function to call when command is matched
-    std::string description;                        // Human-readable description of the command for help
     };
 }

@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.3.0
+ * @version 0.4.0
  * @date 2026-04-29
  * 
  * @copyright Copyright (c) 2026
@@ -45,12 +45,12 @@ void Shell::run() {
         //Ignore blank lines
         if (input.find_first_not_of(" \t") == std::string::npos) continue;
 
+        context.history.push_back(input);
+
         //Parse input into Command-type obj
         cppsh::Command cmd = parser.parse(input);
 
-        //Dispatch command 
-        Dispatcher dsptchr;
-        dsptchr.dispatch(cmd);
+        dsptchr.dispatch(cmd, context);
     }
 }
 

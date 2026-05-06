@@ -25,4 +25,14 @@ namespace cppsh {
     struct Command {
     std::vector<std::string> args; //command name and arguments
     };
+
+    /**
+     * @brief Represents an entry in the command dispatch table.
+     * 
+     */
+    struct CommandEntry {
+    std::string name;                               //Command name (e.g. "exit", "cd")
+    std::function<int(const Command&)> handler;     //Function to call when command is matched
+    std::string description;                        // Human-readable description of the command for help
+    };
 }

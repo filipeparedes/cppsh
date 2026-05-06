@@ -17,8 +17,6 @@
  #pragma once
 
  #include "parser.hpp"
- #include "context.hpp"
- #include "dispatcher.hpp"
 
  #include <string>
 
@@ -50,8 +48,6 @@
         std::string m_user; //Current logged in username
         std::string m_hostname; // Machine hostname
         cppsh::Parser parser; // Command parser obj
-        ShellContext context; //Shell context struct
-        Dispatcher dsptchr; // Dispatcher obj
 
         /**
          * @brief Builds and prints the shell prompt.

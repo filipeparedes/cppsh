@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-int builtin_cd(const cppsh::Command& command, ShellContext& context) {
+int builtin_cd(const cppsh::Command& command) {
     std::string dir;
 
     //No argument -> go to HOME, fallback to root

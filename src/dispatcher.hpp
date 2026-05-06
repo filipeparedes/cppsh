@@ -18,8 +18,6 @@
 #pragma once
 
 #include "command.hpp"
-#include "commands/entry.hpp"
-#include "context.hpp"
 #include <vector>
 
 class Dispatcher {
@@ -32,11 +30,10 @@ class Dispatcher {
          * @param cmd -  the Command to dispatch
          * @return The status code
          */
-        int dispatch(const cppsh::Command& cmd, ShellContext& context);
+        int dispatch(const cppsh::Command& cmd);
 
     private:
-        std::vector<CommandEntry> entries;
-
+        std::vector<cppsh::CommandEntry> entries;
 };
 
 

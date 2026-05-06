@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <iostream>
 
-int builtin_exit(const cppsh::Command& command, ShellContext& context) {
+int builtin_exit(const cppsh::Command& command) {
     std::cout << "Exiting program..." << std::endl;
     exit(0);
     return 0;

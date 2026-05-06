@@ -14,7 +14,6 @@
 #pragma once
 
 #include "command.hpp"
-#include "commands/entry.hpp"
 
 /**
  * @brief Changes directory.
@@ -22,4 +21,4 @@
  * @param command The parsed command (args ignored).
  * @return Status code.
  */
-int builtin_cd(const cppsh::Command& command, ShellContext& context);
+int builtin_cd(const cppsh::Command& command);

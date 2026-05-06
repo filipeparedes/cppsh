@@ -17,7 +17,8 @@
 
 Dispatcher::Dispatcher() {
     entries = {
-    {{"exit", builtin_exit, "Exit the shell"}},
+    {"exit", builtin_exit, "Exit the shell"},
+    {"cd", builtin_cd, "Change directory"},
     };
 }
 

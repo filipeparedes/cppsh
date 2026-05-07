@@ -14,6 +14,6 @@
 
 #pragma once
 
-#include "builtins/exit.hpp"
-#include "builtins/cd.hpp"
-#include "builtins/history.hpp"
+#include "builtins/include/exit.hpp"
+#include "builtins/include/cd.hpp"
+#include "builtins/include/history.hpp"

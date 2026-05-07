@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(src lib include)
+include_directories(src src/include src/commands/builtins/include lib include)
 
 file(GLOB BUILTIN_FILES src/commands/builtins/*.cpp)
 file(GLOB COMMAND_FILES src/commands/*.cpp)

@@ -8,7 +8,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.2.0
+ * @version 0.3.0
  * @date 2026-05-07
  * 
  * @copyright Copyright (c) 2026
@@ -18,11 +18,10 @@
 #pragma once
 
 #include "command.hpp"
-#include "commands/entry.hpp"
-#include "context.hpp"
+#include "icommand_registry.hpp"
 #include <vector>
 
-class Dispatcher {
+class Dispatcher : public ICommandRegistry {
     public:
         Dispatcher();
 
@@ -33,6 +32,13 @@ class Dispatcher {
          * @return The status code
          */
         int dispatch(const cppsh::Command& cmd, ShellContext& context);
+
+        /**
+         * @brief Returns the list of registered command entries.
+         *
+         * @return A const reference to the vector of CommandEntry.
+         */
+        inline const std::vector<CommandEntry>& get_entries() const override { return entries; }
 
     private:
         std::vector<CommandEntry> entries;

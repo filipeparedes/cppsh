@@ -7,7 +7,7 @@
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.1
+ * @version 0.2.0
  * @date 2026-05-06
  *
  * @copyright Copyright (c) 2026
@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <string>
+#include "icommand_registry.hpp"
 
 /**
  * @brief Holds the runtime state of the shell.
@@ -27,4 +28,7 @@
  */
 struct ShellContext {
     std::vector<std::string> history;  // List of commands executed during the session
+    ICommandRegistry& registry;
+
+    ShellContext(ICommandRegistry& r) : registry(r) {}
 };

@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-Shell::Shell() {
+Shell::Shell() : context(dsptchr){
     m_hostname = cppsh::get_hostname();
     m_user = cppsh::get_username();
 }

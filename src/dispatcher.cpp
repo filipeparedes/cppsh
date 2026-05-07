@@ -37,3 +37,4 @@ int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
     std::cerr << "Unknown command: '" << cmd.args[0] << "'" << std::endl;
     return 1;
 }
+

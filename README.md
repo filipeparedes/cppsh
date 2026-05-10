@@ -166,4 +166,4 @@ For detailed technical information about the code architecture, design patterns,
 
 ## Author
 
-**Filipe Paredes** — [filipeparedes3@gmail.com](mailto:filipeparedes3@gmail.com)
+**Filipe Paredes** — [filipeparedes.dev](https://filipeparedes.dev) · [filipeparedes3@gmail.com](mailto:filipeparedes3@gmail.com)

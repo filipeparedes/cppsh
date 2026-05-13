@@ -14,6 +14,7 @@ add_executable(cppsh
     src/main.cpp
     src/shell.cpp
     src/dispatcher.cpp
+    src/executor.cpp
     lib/utils.cpp
     lib/parser.cpp
     ${COMMAND_FILES}
@@ -28,6 +29,7 @@ add_executable(tests
     lib/parser.cpp
     lib/utils.cpp
     src/dispatcher.cpp
+    src/executor.cpp
     ${BUILTIN_FILES}
     )
 target_link_libraries(tests PRIVATE GTest::gtest_main)

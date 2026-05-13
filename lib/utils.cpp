@@ -4,8 +4,8 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1
- * @date 2026-04-29
+ * @version 0.2.0
+ * @date 2026-05-13
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -35,8 +35,19 @@ namespace cppsh {
             //Cast to unsigned char value is not negative, which could result in an undefined behaviour
             return std::tolower(static_cast<unsigned char >(c1)) == 
                    std::tolower(static_cast<unsigned char>(c2));
-    });
-}
+        });
+    }
+
+    std::vector<char*> to_vchar(const std::vector<std::string>& v) {
+        std::vector<char*> vchr;
+
+        for(size_t i = 0; i < v.size(); i++) {
+            vchr.push_back(const_cast<char*>(v[i].c_str()));
+        }
+        vchr.push_back(nullptr);
+
+        return vchr;
+    }
 
     std::string get_cwd() {
         char buffer[PATH_MAX];

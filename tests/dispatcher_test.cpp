@@ -64,6 +64,13 @@ TEST_F(DispatcherTest, HelpReturnsZero) {
     EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
 }
 
+// heLP returns 0 (case insensitive test)
+TEST_F(DispatcherTest, HelpIReturnsZero) {
+    cppsh::Command cmd;
+    cmd.args = {"heLP"};
+    EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
+}
+
 // get_entries returns non-empty list
 TEST_F(DispatcherTest, GetEntriesNotEmpty) {
     EXPECT_FALSE(dispatcher.get_entries().empty());

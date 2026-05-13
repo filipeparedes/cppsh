@@ -24,6 +24,16 @@ namespace cppsh {
     std::string read_input();
 
     /**
+     * @brief Compares two std::strings. Case-insensitive.
+     * 
+     * @param str1 - One of the std::strings to compare
+     * @param str2 - The other std::string to compare
+     * @return true if the strings are equal
+     * @return false if the strings are not equal
+     */
+    bool iequals(const std::string& str1, const std::string& str2);
+    
+    /**
      * @brief Resolves the current working directory.
      * 
      * Replaces the home directory prefix with - if applicable.

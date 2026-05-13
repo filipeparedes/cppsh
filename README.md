@@ -137,7 +137,7 @@ The `Dispatcher` implements `ICommandRegistry`, allowing `ShellContext` to acces
 ### v0.2-alpha
 - Execute external binaries (fork + execvp)
 - Signal handling (Ctrl+C, Ctrl+Z)
-- Case-insensitive command dispatching
+- ✅ Case-insensitive command dispatching
 - Robust error handling system
 
 ### v0.3-beta

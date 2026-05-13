@@ -8,7 +8,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.3.0
+ * @version 0.4.0
  * @date 2026-05-07
  * 
  * @copyright Copyright (c) 2026
@@ -19,6 +19,7 @@
 
 #include "command.hpp"
 #include "icommand_registry.hpp"
+#include "executor.hpp"
 #include <vector>
 
 class Dispatcher : public ICommandRegistry {
@@ -41,6 +42,7 @@ class Dispatcher : public ICommandRegistry {
         inline const std::vector<CommandEntry>& get_entries() const override { return entries; }
 
     private:
+        Executor executor;
         std::vector<CommandEntry> entries;
 
 };

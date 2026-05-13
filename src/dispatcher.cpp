@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.3.0
+ * @version 0.4.0
  * @date 2026-05-03
  * 
  * @copyright Copyright (c) 2026
@@ -35,8 +35,9 @@ int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
         }
     }
 
-    // TODO: executor
-    std::cerr << "Unknown command: '" << cmd.args[0] << "'" << std::endl;
+    if (executor.execute(cmd)) {
+        std::cerr << "Unknown command: '" << cmd.args[0] << "'" << std::endl;
+    }
     return 1;
 }
 

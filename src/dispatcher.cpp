@@ -14,6 +14,7 @@
 #include "dispatcher.hpp"
 #include "commands/commands.hpp"
 #include "commands/entry.hpp"
+#include "utils.hpp"
 #include <iostream>
 
 Dispatcher::Dispatcher() {
@@ -29,7 +30,7 @@ int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
     if (cmd.args.empty()) return 0;
 
     for (const CommandEntry& entry : entries) {
-        if (entry.name == cmd.args[0]) {
+        if (cppsh::iequals(entry.name, cmd.args[0])) {
             return entry.handler(cmd, context);
         }
     }

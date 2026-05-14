@@ -15,6 +15,7 @@
 #include "utils.hpp"
 #include "parser.hpp"
 #include "dispatcher.hpp"
+#include "signal_handling.hpp"
 
 #include <iostream>
 #include <string>
@@ -26,6 +27,7 @@
 Shell::Shell() : context(dsptchr){
     m_hostname = cppsh::get_hostname();
     m_user = cppsh::get_username();
+    handle_signal();
 }
 
 void Shell::run() {

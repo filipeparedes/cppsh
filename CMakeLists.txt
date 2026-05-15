@@ -16,6 +16,7 @@ add_executable(cppsh
     src/dispatcher.cpp
     src/executor.cpp
     src/signal_handling.cpp
+    src/errors/shell_error.cpp
     lib/utils.cpp
     lib/parser.cpp
     ${COMMAND_FILES}
@@ -32,6 +33,7 @@ add_executable(tests
     src/dispatcher.cpp
     src/executor.cpp
     src/signal_handling.cpp
+    src/errors/shell_error.cpp
     ${BUILTIN_FILES}
     )
 target_link_libraries(tests PRIVATE GTest::gtest_main)

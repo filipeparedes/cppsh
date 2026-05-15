@@ -21,7 +21,7 @@ ShellError::ShellError(ShellErrorCode code, std::string cmd, std::string arg, st
 
 void ShellError::print(){
     if (is_system_error()){
-        std::cerr << "cppsh: error[0x" << std::hex << std::setw(4) << std::setfill('0') 
+        std::cerr << "error[0x" << std::hex << std::setw(4) << std::setfill('0') 
               << static_cast<int>(code) << "]: ";
         std::cerr << "os error: " << errno << " (" << strerror(errno) << ")" << std::endl;
         return;
@@ -30,17 +30,17 @@ void ShellError::print(){
     //User error
     switch(code){
         case ShellErrorCode::INVALID_PATH:
-            std::cerr << "cppsh: '" << cmd << "': invalid path '/" << arg << "'" << std::endl; 
+            std::cerr << cmd << ": /" << arg << ": No such directory" << std::endl; 
             break;
         case ShellErrorCode::COMMAND_NOT_FOUND:
-            std::cerr << "cppsh: '" << cmd << "': unknown command" << std::endl;
+            std::cerr << cmd << ": Unknown command" << std::endl;
             break;
         case ShellErrorCode::INVALID_ARGS:
-            std::cerr << "cppsh: '" << cmd << "': invalid arguments '" << arg << "'" << std::endl; 
-            std::cerr << "usage: " << usage << std::endl;   
+            std::cerr << cmd << ": '" << arg << "' Invalid arguments" << std::endl; 
+            std::cerr << "Usage: " << usage << std::endl;   
             break;
         default:
-            std::cerr << "cppsh: An unexpected error has occurred." << std::endl;
+            std::cerr << "An unexpected error has occurred." << std::endl;
     }
 }
 

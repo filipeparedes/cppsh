@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1.0
+ * @version 0.2.0
  * @date 2026-05-13
  * 
  * @copyright Copyright (c) 2026
@@ -12,6 +12,8 @@
  */
 
 #include "include/executor.hpp"
+#include "errors/shell_error.hpp"
+
 #include "utils.hpp"
 #include <unistd.h>
 #include <iostream>
@@ -22,10 +24,8 @@ int Executor::execute(const cppsh::Command& cmd) {
 
     pid_t c_pid = fork();
 
-    if (c_pid == -1) {
-        perror("fork");
-        return -1;
-    }
+    if (c_pid == -1) 
+        throw ShellError(ShellErrorCode::FORK_FAILED);
     else if (c_pid > 0) {
         //Parent process
         int status;
@@ -52,6 +52,6 @@ int Executor::execute(const cppsh::Command& cmd) {
         execvp(cmd.args[0].c_str(), argv.data());
 
         //If the process reaches here, execvp failed
-        exit(0);
+        exit(127);
     }
 }

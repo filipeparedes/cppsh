@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "dispatcher.hpp"
+#include "errors/shell_error.hpp"
 #include "context.hpp"
 
 class DispatcherTest : public ::testing::Test {
@@ -8,11 +9,11 @@ protected:
     ShellContext context{dispatcher};
 };
 
-// Unknown command returns error code
-TEST_F(DispatcherTest, UnknownCommandReturnsError) {
+// Unknown command throws ShellError
+TEST_F(DispatcherTest, UnknownCommandThrows) {
     cppsh::Command cmd;
     cmd.args = {"unknowncommand"};
-    EXPECT_EQ(dispatcher.dispatch(cmd, context), 1);
+    EXPECT_THROW(dispatcher.dispatch(cmd, context), ShellError);
 }
 
 // Empty command returns 0
@@ -21,11 +22,11 @@ TEST_F(DispatcherTest, EmptyCommandReturnsZero) {
     EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
 }
 
-// cd with no arguments returns 0
-TEST_F(DispatcherTest, CdNoArgsReturnsZero) {
+// cd with invalid path throws ShellError
+TEST_F(DispatcherTest, CdInvalidPathThrows) {
     cppsh::Command cmd;
-    cmd.args = {"cd"};
-    EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
+    cmd.args = {"cd", "/this/path/does/not/exist"};
+    EXPECT_THROW(dispatcher.dispatch(cmd, context), ShellError);
 }
 
 // cd with valid path returns 0
@@ -33,13 +34,6 @@ TEST_F(DispatcherTest, CdValidPathReturnsZero) {
     cppsh::Command cmd;
     cmd.args = {"cd", "/tmp"};
     EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
-}
-
-// cd with invalid path returns error
-TEST_F(DispatcherTest, CdInvalidPathReturnsError) {
-    cppsh::Command cmd;
-    cmd.args = {"cd", "/this/path/does/not/exist"};
-    EXPECT_EQ(dispatcher.dispatch(cmd, context), 1);
 }
 
 // history with empty history returns 0
@@ -61,6 +55,13 @@ TEST_F(DispatcherTest, HistoryWithEntriesReturnsZero) {
 TEST_F(DispatcherTest, HelpReturnsZero) {
     cppsh::Command cmd;
     cmd.args = {"help"};
+    EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
+}
+
+// heLP returns 0 (case insensitive test)
+TEST_F(DispatcherTest, HelpIReturnsZero) {
+    cppsh::Command cmd;
+    cmd.args = {"heLP"};
     EXPECT_EQ(dispatcher.dispatch(cmd, context), 0);
 }
 

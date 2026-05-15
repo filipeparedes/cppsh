@@ -4,8 +4,8 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1
- * @date 2026-04-29
+ * @version 0.2.0
+ * @date 2026-05-13
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -14,6 +14,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace cppsh {
     /**
@@ -23,6 +24,24 @@ namespace cppsh {
      */
     std::string read_input();
 
+    /**
+     * @brief Compares two std::strings. Case-insensitive.
+     * 
+     * @param str1 - One of the std::strings to compare
+     * @param str2 - The other std::string to compare
+     * @return true if the strings are equal
+     * @return false if the strings are not equal
+     */
+    bool iequals(const std::string& str1, const std::string& str2);
+
+    /**
+     * @brief Convert a vector of std::strings into a vector of char*
+     * 
+     * @param v the vector of std::strings
+     * @return std::vector<char*> the converted vector of char*
+     */
+    std::vector<char*> to_vchar(const std::vector<std::string>& v);
+    
     /**
      * @brief Resolves the current working directory.
      * 

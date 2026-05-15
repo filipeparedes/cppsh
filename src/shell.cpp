@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.0
+ * @version 0.5.0
  * @date 2026-04-29
  * 
  * @copyright Copyright (c) 2026
@@ -16,6 +16,7 @@
 #include "parser.hpp"
 #include "dispatcher.hpp"
 #include "signal_handling.hpp"
+#include "errors/shell_error.hpp"
 
 #include <iostream>
 #include <string>
@@ -52,7 +53,12 @@ void Shell::run() {
         //Parse input into Command-type obj
         cppsh::Command cmd = parser.parse(input);
 
-        dsptchr.dispatch(cmd, context);
+        try {
+            dsptchr.dispatch(cmd, context);
+        } catch (ShellError& e) {
+            e.print();
+        }
+
     }
 }
 

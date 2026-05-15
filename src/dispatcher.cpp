@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.0
+ * @version 0.5.0
  * @date 2026-05-03
  * 
  * @copyright Copyright (c) 2026
@@ -12,6 +12,7 @@
  */
 
 #include "dispatcher.hpp"
+#include "errors/shell_error.hpp"
 #include "commands/commands.hpp"
 #include "commands/entry.hpp"
 #include "utils.hpp"
@@ -30,14 +31,14 @@ int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
     if (cmd.args.empty()) return 0;
 
     for (const CommandEntry& entry : entries) {
-        if (cppsh::iequals(entry.name, cmd.args[0])) {
+        if (cppsh::iequals(entry.name, cmd.args[0]))
             return entry.handler(cmd, context);
-        }
     }
 
-    if (executor.execute(cmd)) {
-        std::cerr << "Unknown command: '" << cmd.args[0] << "'" << std::endl;
-    }
-    return 1;
+    int res = executor.execute(cmd);
+    if (res == 127)
+        throw ShellError(ShellErrorCode::COMMAND_NOT_FOUND, cmd.args[0]);
+
+    return res;
 }
 

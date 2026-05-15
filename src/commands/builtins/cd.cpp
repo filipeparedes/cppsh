@@ -4,7 +4,7 @@
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.2.1
+ * @version 0.3.0
  * @date 2026-05-06
  *
  * @copyright Copyright (c) 2026
@@ -12,6 +12,8 @@
  */
 
 #include "cd.hpp"
+#include "errors/shell_error.hpp"
+
 #include <unistd.h>
 #include <iostream>
 #include <string>
@@ -30,8 +32,7 @@ int builtin_cd(const cppsh::Command& command, ShellContext& context) {
 
     // Change directory
     if (chdir(dir.c_str()) == -1) {
-        std::cout << "Couldn't find the directory '" << dir << "'"  << std::endl;
-        return 1;
+        throw ShellError(ShellErrorCode::INVALID_PATH, command.args[0], dir);
     }
 
    return 0;

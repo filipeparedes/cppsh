@@ -9,11 +9,14 @@ A Unix shell implementation in C++ supporting built-in commands, command dispatc
 ## Features
 
 - **Interactive prompt** — displays `user@hostname:~/path$` with home directory substitution
-- **Command dispatcher** — extensible, table-driven dispatch system with case-insensitive matching (planned)
+- **Command dispatcher** — extensible, table-driven dispatch system with case-insensitive matching
 - **Built-in commands** — `cd`, `exit`, `help`, `history`
+- **External binary execution** — runs any binary in `$PATH` via `fork` + `execvp`
+- **Signal handling** — `Ctrl+C` terminates the running command, `Ctrl+Z` suspends it
+- **Robust error handling** — structured error system with hex error codes for system errors
 - **Command history** — tracks all executed commands during the session
 - **Graceful EOF handling** — exits cleanly on `Ctrl+D`
-- **Unit tested** — parser and dispatcher covered with Google Test
+- **Unit tested** — parser, dispatcher and error handling covered with Google Test
 
 ---
 
@@ -40,8 +43,11 @@ make
 ### Run the shell
 
 ```bash
-make run
+make
+./build/cppsh
 ```
+
+> Run directly instead of `make run` to ensure signal handling works correctly.
 
 ### Run tests
 
@@ -76,6 +82,7 @@ cppsh/
 │   ├── include/                    # Internal shared headers
 │   │   ├── context.hpp             # ShellContext — shell runtime state
 │   │   ├── dispatcher.hpp          # Command dispatcher
+│   │   ├── executor.hpp            # External binary executor
 │   │   ├── shell.hpp               # Main shell loop
 │   │   └── icommand_registry.hpp   # ICommandRegistry interface
 │   ├── commands/
@@ -87,19 +94,26 @@ cppsh/
 │   │   │   └── history.cpp
 │   │   ├── entry.hpp               # CommandEntry — dispatch table entry
 │   │   └── commands.hpp            # Centralized builtin includes
-│   ├── dispatcher.cpp       
-│   ├── shell.cpp            
+│   ├── errors/
+│   │   ├── error_codes.hpp         # ShellErrorCode — hex error codes
+│   │   ├── shell_error.hpp         # ShellError — structured error class
+│   │   └── shell_error.cpp
+│   ├── dispatcher.cpp
+│   ├── executor.cpp
+│   ├── signal_handling.cpp         # SIGINT and SIGTSTP handlers
+│   ├── shell.cpp
 │   └── main.cpp                    # Entry point
 ├── include/                        # Public headers
-│   ├── parser.hpp                  # Input parser 
-│   ├── utils.hpp                   # Utility functions 
-│   └── command.hpp                 # Command struct 
+│   ├── parser.hpp                  # Input parser
+│   ├── utils.hpp                   # Utility functions
+│   └── command.hpp                 # Command struct
 ├── lib/                            # Public implementations
-│   ├── parser.cpp                  
-│   └── utils.cpp                  
+│   ├── parser.cpp
+│   └── utils.cpp
 ├── tests/
 │   ├── parser_test.cpp
-│   └── dispatcher_test.cpp
+│   ├── dispatcher_test.cpp
+│   └── error_test.cpp
 ├── docs/
 ├── CMakeLists.txt
 ├── Makefile
@@ -119,28 +133,52 @@ main.cpp
         ├── cppsh::Parser::parse()    # tokenizes input into Command
         └── Dispatcher::dispatch()    # routes Command to handler
               ├── builtin handler     # cd, exit, help, history
-              └── Executor (planned)  # fork + execvp for external binaries
+              └── Executor            # fork + execvp for external binaries
+                    └── ShellError    # structured error reporting
 ```
 
 The `Dispatcher` implements `ICommandRegistry`, allowing `ShellContext` to access the command registry without depending on a concrete implementation — following the Dependency Inversion principle.
 
 ---
 
+## Error Handling
+
+cppsh distinguishes between two categories of errors:
+
+**User errors** — plain language messages:
+```
+cd: /naoexiste: no such directory
+```
+
+**System errors** — hex error codes with OS context:
+```
+error[0x0100]: os error: 12 (cannot allocate memory)
+```
+
+Error codes follow a structured range:
+
+| Range | Category |
+|---|---|
+| `0x0000` – `0x00FF` | User errors |
+| `0x0100` – `0xFFFF` | System errors |
+
+---
+
 ## Roadmap
 
-### v0.1-alpha (current)
+### v0.1-alpha
 - ✅ Built-in commands: cd, exit, help, history
 - ✅ Command dispatcher
 - ✅ Command history
 - ✅ Interactive prompt
 
-### v0.2-alpha
-- Execute external binaries (fork + execvp)
-- Signal handling (Ctrl+C, Ctrl+Z)
-- Case-insensitive command dispatching
-- Robust error handling system
+### v0.2-alpha (current)
+- ✅ Execute external binaries (fork + execvp)
+- ✅ Signal handling (Ctrl+C, Ctrl+Z)
+- ✅ Case-insensitive command dispatching
+- ✅ Robust error handling system
 
-### v0.3-beta
+### v0.3-beta (WIP)
 - I/O Redirection (>, >>, <)
 - Pipes (|)
 - Background execution (&)
@@ -162,6 +200,7 @@ The `Dispatcher` implements `ICommandRegistry`, allowing `ShellContext` to acces
 ---
 
 ## Documentation
+
 For detailed technical information about the code architecture, design patterns, tests, etc. check the [Technical Manual](doc/technical_manual.md).
 
 ## Author

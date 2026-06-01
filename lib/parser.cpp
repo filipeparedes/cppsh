@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.2.0
+ * @version 0.3.0
  * @date 2026-06-01
  * 
  * @copyright Copyright (c) 2026
@@ -12,6 +12,7 @@
 */
 
 #include "parser.hpp"
+#include "parse_exception.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -25,6 +26,9 @@ namespace cppsh {
         for (int i = 0; i<tok_vec.size(); i++) {
             //Input Redirection
             if (tok_vec[i] == "<"){
+                if (i + 1 >= tok_vec.size())
+                    throw cppsh::ParseException("missing redirection target after '<'");
+
                 cmd.input_file = tok_vec[i + 1]; // next argument should be the file name
 
                 tok_vec.erase(tok_vec.begin() + i); //erase redirection operator
@@ -34,6 +38,9 @@ namespace cppsh {
             } 
             //Output Redirection (Append)
             else if (tok_vec[i] == ">>"){
+                if (i + 1 >= tok_vec.size())
+                    throw cppsh::ParseException("missing redirection target after '>>'");
+
                 cmd.output_file = tok_vec[i + 1];
                 cmd.append = true; // >> appends instead of overwriting
 
@@ -44,6 +51,9 @@ namespace cppsh {
             }
             //Output Redirection (Overwrite)
             else if (tok_vec[i] == ">"){
+                if (i + 1 >= tok_vec.size())
+                    throw cppsh::ParseException("missing redirection target after '>'");
+
                 cmd.output_file = tok_vec[i + 1];
 
                 tok_vec.erase(tok_vec.begin() + i);

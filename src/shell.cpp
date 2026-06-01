@@ -12,8 +12,6 @@
  */
 
 #include "shell.hpp"
-#include "utils.hpp"
-#include "parser.hpp"
 #include "dispatcher.hpp"
 #include "signal_handling.hpp"
 #include "errors/shell_error.hpp"
@@ -24,6 +22,9 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <limits.h>
+#include <parse_exception.hpp>
+#include <parser.hpp>
+#include <utils.hpp>
 
 Shell::Shell() : context(dsptchr){
     m_hostname = cppsh::get_hostname();
@@ -33,6 +34,7 @@ Shell::Shell() : context(dsptchr){
 
 void Shell::run() {
     std::string input;
+    cppsh::Command cmd;
 
     while(true) {
         print_prompt();
@@ -50,12 +52,16 @@ void Shell::run() {
 
         context.history.push_back(input);
 
-        //Parse input into Command-type obj
-        cppsh::Command cmd = parser.parse(input);
-
         try {
+            //Parse input into Command-type obj
+            cmd = parser.parse(input);
+
             dsptchr.dispatch(cmd, context);
-        } catch (ShellError& e) {
+        }
+        catch (const cppsh::ParseException& e) {
+            ShellError(ShellErrorCode::MISSING_REDIRECTION_TARGET, "cppsh", "", e.what()).print();
+        }
+        catch (ShellError& e) {
             e.print();
         }
 

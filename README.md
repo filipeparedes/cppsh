@@ -179,7 +179,7 @@ Error codes follow a structured range:
 - ✅ Robust error handling system
 
 ### v0.3-beta (WIP)
-- I/O Redirection (>, >>, <)
+- ✅ I/O Redirection (>, >>, <)
 - Pipes (|)
 - Background execution (&)
 - Quotes and escape characters

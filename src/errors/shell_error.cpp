@@ -30,7 +30,7 @@ void ShellError::print(){
     //User error
     switch(code){
         case ShellErrorCode::INVALID_PATH:
-            std::cerr << cmd << ": /" << arg << ": No such directory" << std::endl; 
+            std::cerr << cmd << ": " << arg << ": No such directory" << std::endl; 
             break;
         case ShellErrorCode::COMMAND_NOT_FOUND:
             std::cerr << cmd << ": Unknown command" << std::endl;
@@ -38,6 +38,9 @@ void ShellError::print(){
         case ShellErrorCode::INVALID_ARGS:
             std::cerr << cmd << ": '" << arg << "' Invalid arguments" << std::endl; 
             std::cerr << "Usage: " << usage << std::endl;   
+            break;
+        case ShellErrorCode::MISSING_REDIRECTION_TARGET:
+            std::cerr << cmd << ": " << usage << std::endl;
             break;
         default:
             std::cerr << "An unexpected error has occurred." << std::endl;

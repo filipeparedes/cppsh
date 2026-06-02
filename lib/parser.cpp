@@ -23,6 +23,7 @@ namespace cppsh {
         Command cmd;
 
         redirect_io(tok_vec, cmd);
+        to_bg(tok_vec, cmd);
 
         cmd.args = tok_vec;
         return cmd;

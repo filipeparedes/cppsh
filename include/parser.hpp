@@ -45,9 +45,28 @@ namespace cppsh {
             /**
              * @brief Checks for io redirection instructions in the user input
              * 
+             * Writes to cmd if they are found.
+             * Also removes those instructions from tok_vec
+             * 
              * @param tok_vec [in, out] The user input as a vector of string tokens.
              * @param cmd [in, out] The command object.
              */
-            void Parser::redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const;
+            void redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const;
+
+            /**
+             * @brief Checks for background execution instruction in the user input
+             * 
+             * Writes to cmd if it is found.
+             * Also removes that instruction from tok_vec
+             * 
+             * @param tok_vec [in, out] The user input as a vector of string tokens.
+             * @param cmd [in, out] The command object.
+             */
+            void inline to_bg(std::vector<std::string>& tok_vec, Command& cmd) const {
+                if (!tok_vec.empty() && tok_vec.back() == "&") {
+                    cmd.bg = true;
+                    tok_vec.pop_back();
+                }
+            }
     };
 }

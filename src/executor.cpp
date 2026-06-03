@@ -29,6 +29,11 @@ int Executor::execute(const cppsh::Command& cmd) {
         throw ShellError(ShellErrorCode::FORK_FAILED);
     else if (c_pid > 0) {
         //Parent process
+        if (cmd.bg) {
+            std::cout << "[" << c_pid << "]: Background execution" << std::endl;
+            return 0;
+        }
+
         int status;
         waitpid(c_pid, &status, WUNTRACED); // wait for child to end
 
@@ -70,7 +75,7 @@ int Executor::execute(const cppsh::Command& cmd) {
             //get file descriptor for the output file
             int fd = open(cmd.output_file.c_str(), flags, 0644);
 
-            //redirect stdout to the input file
+            //redirect stdout to the output file
             dup2(fd, STDOUT_FILENO);
 
             //close the file

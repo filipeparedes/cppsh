@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.1
+ * @version 0.2.0
  * @date 2026-04-30
  * 
  * @copyright Copyright (c) 2026
@@ -41,5 +41,32 @@ namespace cppsh {
              * @return A vector of string tokens.
              */
             std::vector<std::string> tokenize(const std::string& input) const;
+
+            /**
+             * @brief Checks for io redirection instructions in the user input
+             * 
+             * Writes to cmd if they are found.
+             * Also removes those instructions from tok_vec
+             * 
+             * @param tok_vec [in, out] The user input as a vector of string tokens.
+             * @param cmd [in, out] The command object.
+             */
+            void redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const;
+
+            /**
+             * @brief Checks for background execution instruction in the user input
+             * 
+             * Writes to cmd if it is found.
+             * Also removes that instruction from tok_vec
+             * 
+             * @param tok_vec [in, out] The user input as a vector of string tokens.
+             * @param cmd [in, out] The command object.
+             */
+            void inline to_bg(std::vector<std::string>& tok_vec, Command& cmd) const {
+                if (!tok_vec.empty() && tok_vec.back() == "&") {
+                    cmd.bg = true;
+                    tok_vec.pop_back();
+                }
+            }
     };
 }

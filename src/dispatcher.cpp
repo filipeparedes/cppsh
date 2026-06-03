@@ -67,6 +67,7 @@ int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
                 close(fd);
             }
 
+            //TODO: background execution for built ins
             int result = entry.handler(cmd, context);
 
             //restore IO direction back to normal

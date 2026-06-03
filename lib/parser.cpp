@@ -22,6 +22,27 @@ namespace cppsh {
         std::vector<std::string> tok_vec = tokenize(input);
         Command cmd;
 
+        redirect_io(tok_vec, cmd);
+        to_bg(tok_vec, cmd);
+
+        cmd.args = tok_vec;
+        return cmd;
+    }
+
+    std::vector<std::string> Parser::tokenize(const std::string& input) const {
+        std::vector<std::string> tokens;
+        std::stringstream stream(input);
+        std::string token;
+
+        //get each token from the stream
+        while (stream >> token){
+            tokens.push_back(token);
+        }
+
+        return tokens;
+    }
+
+    void Parser::redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const  {
         // IO redirection
         for (int i = 0; i<tok_vec.size(); i++) {
             //Input Redirection
@@ -62,21 +83,5 @@ namespace cppsh {
                 i--;
             }
         }
-        cmd.args = tok_vec;
-
-        return cmd;
-    }
-
-    std::vector<std::string> Parser::tokenize(const std::string& input) const {
-        std::vector<std::string> tokens;
-        std::stringstream stream(input);
-        std::string token;
-
-        //get each token from the stream
-        while (stream >> token){
-            tokens.push_back(token);
-        }
-
-        return tokens;
     }
 }

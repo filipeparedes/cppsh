@@ -181,7 +181,7 @@ Error codes follow a structured range:
 ### v0.3-beta (WIP)
 - ✅ I/O Redirection (>, >>, <)
 - Pipes (|)
-- Background execution (&)
+- ✅ Background execution (&)
 - Quotes and escape characters
 
 ### v0.4-beta

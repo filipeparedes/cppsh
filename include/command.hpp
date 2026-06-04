@@ -25,6 +25,5 @@ namespace cppsh {
         std::string input_file;         // from <
         std::string output_file;        // for > or >> 
         bool append = false;            // decide if > or >>
-        bool bg = false;                // background execution flag
     };
 }

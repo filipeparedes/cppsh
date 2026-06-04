@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.2.0
+ * @version 0.3.0
  * @date 2026-04-30
  * 
  * @copyright Copyright (c) 2026
@@ -16,22 +16,23 @@
 #include <vector>
 #include <string>
 
+#include "pipeline.hpp"
 #include "command.hpp"
 
 namespace cppsh {
     /**
      * @class Parser
-     * @brief Parses a raw input string into Command struct.
+     * @brief Parses a raw input string into Pipeline struct.
      */
     class Parser {
         public: 
             /**
-             * @brief Parses a raw input line into a Command.
+             * @brief Parses a raw input line into a Pipeline.
              * 
              * @param input The raw input string from the user.
-             * @return A Command struct with args and redirections populated.
+             * @return A Pipeline struct with populated Commands.
              */
-            cppsh::Command parse(const std::string& input) const;
+            cppsh::Pipeline parse(const std::string& input) const;
 
         private:
             /**
@@ -46,25 +47,32 @@ namespace cppsh {
              * @brief Checks for io redirection instructions in the user input
              * 
              * Writes to cmd if they are found.
-             * Also removes those instructions from tok_vec
+             * Also removes those instructions from cmd.args
              * 
-             * @param tok_vec [in, out] The user input as a vector of string tokens.
              * @param cmd [in, out] The command object.
              */
-            void redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const;
+            void redirect_io(Command& cmd) const;
+
+            /**
+             * @brief Splits the tokens into a pipeline of commands
+             * 
+             * @param tok_vec [in, out] The user input as a vector of string tokens.
+             * @param pl [in, out] The pipeline object
+             */
+            void split(std::vector<std::string>& tok_vec, Pipeline& pl) const;
 
             /**
              * @brief Checks for background execution instruction in the user input
              * 
-             * Writes to cmd if it is found.
+             * Writes to pl if it is found.
              * Also removes that instruction from tok_vec
              * 
              * @param tok_vec [in, out] The user input as a vector of string tokens.
-             * @param cmd [in, out] The command object.
+             * @param pl [in, out] The Pipeline object.
              */
-            void inline to_bg(std::vector<std::string>& tok_vec, Command& cmd) const {
+            void inline is_bg(std::vector<std::string>& tok_vec, Pipeline& pl) const {
                 if (!tok_vec.empty() && tok_vec.back() == "&") {
-                    cmd.bg = true;
+                    pl.bg = true;
                     tok_vec.pop_back();
                 }
             }

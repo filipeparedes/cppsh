@@ -4,8 +4,8 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.3.0
- * @date 2026-06-01
+ * @version 0.4.0
+ * @date 2026-06-05
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -20,8 +20,17 @@
 #include <csignal>
 #include <fcntl.h>
 
-int Executor::execute(const cppsh::Command& cmd) {
-    if (cmd.args.empty()) return 0;
+int Executor::exec(const cppsh::Pipeline& pl) {
+    if (pl.cmds.empty()) return 0;
+
+    if (pl.cmds.size() == 1) 
+        exec_single(pl);
+    else 
+        exec_pl(pl);
+}
+
+int Executor::exec_single(const cppsh::Pipeline& pl){
+    cppsh::Command cmd = pl.cmds[0];
 
     pid_t c_pid = fork();
 
@@ -29,7 +38,7 @@ int Executor::execute(const cppsh::Command& cmd) {
         throw ShellError(ShellErrorCode::FORK_FAILED);
     else if (c_pid > 0) {
         //Parent process
-        if (cmd.bg) {
+        if (pl.bg) {
             std::cout << "[" << c_pid << "]: Background execution" << std::endl;
             return 0;
         }
@@ -37,13 +46,13 @@ int Executor::execute(const cppsh::Command& cmd) {
         int status;
         waitpid(c_pid, &status, WUNTRACED); // wait for child to end
 
-        if (WIFEXITED(status)) {
+        if (WIFEXITED(status))
             return WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
+        else if (WIFSIGNALED(status))
             return 0;
-        } else if (WIFSTOPPED(status)) {
+        else if (WIFSTOPPED(status))
             return 0;
-        }
+        
         return 0;
     }
     else {
@@ -84,8 +93,14 @@ int Executor::execute(const cppsh::Command& cmd) {
 
         //.data() converts std::vector<char*> into char**
         execvp(cmd.args[0].c_str(), argv.data());
+    }
 
         //If the process reaches here, execvp failed
         exit(127);
-    }
+}
+
+int Executor::exec_pl(const cppsh::Pipeline& pl) {
+    int n = pl.cmds.size();
+
+    return 1;
 }

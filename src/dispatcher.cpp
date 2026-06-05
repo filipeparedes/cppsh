@@ -32,7 +32,7 @@ Dispatcher::Dispatcher() {
 
 int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
     if (pl.cmds.empty()) return 0;
-    Command cmd;
+    cppsh::Command cmd;
 
     //If there is only one entry, check built ins
     if (pl.cmds.size() == 1) {
@@ -88,7 +88,7 @@ int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
         }
     }
     //Multiple entries -> straight to executor
-    int res = executor.execute(pl);
+    int res = executor.exec(pl);
     if (res == 127)
         throw ShellError(ShellErrorCode::COMMAND_NOT_FOUND, pl.cmds[0].args[0]);
 

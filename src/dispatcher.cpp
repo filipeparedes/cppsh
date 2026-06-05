@@ -30,61 +30,67 @@ Dispatcher::Dispatcher() {
     };
 }
 
-int Dispatcher::dispatch(const cppsh::Command& cmd, ShellContext& context) {
-    if (cmd.args.empty()) return 0;
+int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
+    if (pl.cmds.empty()) return 0;
+    Command cmd;
 
-    for (const CommandEntry& entry : entries) {
-        if (cppsh::iequals(entry.name, cmd.args[0])){
-            //save default IO direction
-            int saved_stdout = dup(STDOUT_FILENO);
-            int saved_stdin = dup(STDIN_FILENO);
+    //If there is only one entry, check built ins
+    if (pl.cmds.size() == 1) {
+        cmd = pl.cmds[0];
 
-            //Input redirection
-            if (!cmd.input_file.empty()) {
-                //get file descriptor for the input file
-                int fd = open(cmd.input_file.c_str(), O_RDONLY);
+        for (const CommandEntry& entry : entries) {
+            if (cppsh::iequals(entry.name, cmd.args[0])){
+                //save default IO direction
+                int saved_stdout = dup(STDOUT_FILENO);
+                int saved_stdin = dup(STDIN_FILENO);
 
-                //redirect stdin to the input file
-                dup2(fd, STDIN_FILENO);
+                //Input redirection
+                if (!cmd.input_file.empty()) {
+                    //get file descriptor for the input file
+                    int fd = open(cmd.input_file.c_str(), O_RDONLY);
 
-                //close the file
-                close(fd);
+                    //redirect stdin to the input file
+                    dup2(fd, STDIN_FILENO);
+
+                    //close the file
+                    close(fd);
+                }
+
+                //Output redirection
+                if (!cmd.output_file.empty()) {
+                    //define if it overwrites (truncates) or appends
+                    int flags = cmd.append ? O_WRONLY | O_CREAT | O_APPEND 
+                                        : O_WRONLY | O_CREAT | O_TRUNC;
+                    
+                    //get file descriptor for the output file
+                    int fd = open(cmd.output_file.c_str(), flags, 0644);
+
+                    //redirect stdout to the input file
+                    dup2(fd, STDOUT_FILENO);
+
+                    //close the file
+                    close(fd);
+                }
+
+                //TODO: background execution for built ins
+                int result = entry.handler(cmd, context);
+
+                //restore IO direction back to normal
+                dup2(saved_stdout, STDOUT_FILENO);
+                dup2(saved_stdin, STDIN_FILENO);
+
+                //close save files
+                close(saved_stdout);
+                close(saved_stdin);
+
+                return result;
             }
-
-            //Output redirection
-            if (!cmd.output_file.empty()) {
-                //define if it overwrites (truncates) or appends
-                int flags = cmd.append ? O_WRONLY | O_CREAT | O_APPEND 
-                                    : O_WRONLY | O_CREAT | O_TRUNC;
-                
-                //get file descriptor for the output file
-                int fd = open(cmd.output_file.c_str(), flags, 0644);
-
-                //redirect stdout to the input file
-                dup2(fd, STDOUT_FILENO);
-
-                //close the file
-                close(fd);
-            }
-
-            //TODO: background execution for built ins
-            int result = entry.handler(cmd, context);
-
-            //restore IO direction back to normal
-            dup2(saved_stdout, STDOUT_FILENO);
-            dup2(saved_stdin, STDIN_FILENO);
-
-            //close save files
-            close(saved_stdout);
-            close(saved_stdin);
-
-            return result;
         }
     }
-
-    int res = executor.execute(cmd);
+    //Multiple entries -> straight to executor
+    int res = executor.execute(pl);
     if (res == 127)
-        throw ShellError(ShellErrorCode::COMMAND_NOT_FOUND, cmd.args[0]);
+        throw ShellError(ShellErrorCode::COMMAND_NOT_FOUND, pl.cmds[0].args[0]);
 
     return res;
 }

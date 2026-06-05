@@ -8,7 +8,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.0
+ * @version 0.5.0
  * @date 2026-05-07
  * 
  * @copyright Copyright (c) 2026
@@ -17,9 +17,10 @@
 
 #pragma once
 
-#include "command.hpp"
 #include "icommand_registry.hpp"
 #include "executor.hpp"
+
+#include <pipeline.hpp>
 #include <vector>
 
 class Dispatcher : public ICommandRegistry {
@@ -27,12 +28,12 @@ class Dispatcher : public ICommandRegistry {
         Dispatcher();
 
         /**
-         * @brief Dispatches a Command
+         * @brief Dispatches a Pipeline of Commands
          * 
-         * @param cmd -  the Command to dispatch
+         * @param pl -  the Pipeline to dispatch
          * @return The status code
          */
-        int dispatch(const cppsh::Command& cmd, ShellContext& context);
+        int dispatch(const cppsh::Pipeline& pl, ShellContext& context);
 
         /**
          * @brief Returns the list of registered command entries.

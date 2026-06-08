@@ -28,6 +28,7 @@ find_package(GTest REQUIRED)
 add_executable(tests 
     tests/parser_test.cpp
     tests/dispatcher_test.cpp
+    tests/pipe_test.cpp
     lib/parser.cpp
     lib/utils.cpp
     src/dispatcher.cpp

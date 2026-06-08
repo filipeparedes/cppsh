@@ -23,10 +23,7 @@
 int Executor::exec(const cppsh::Pipeline& pl) {
     if (pl.cmds.empty()) return 0;
 
-    if (pl.cmds.size() == 1) 
-        exec_single(pl);
-    else 
-        exec_pl(pl);
+    return pl.cmds.size() == 1 ? exec_single(pl) : exec_pl(pl);
 }
 
 int Executor::exec_single(const cppsh::Pipeline& pl){
@@ -36,7 +33,8 @@ int Executor::exec_single(const cppsh::Pipeline& pl){
 
     if (c_pid == -1) 
         throw ShellError(ShellErrorCode::FORK_FAILED);
-    else if (c_pid > 0) {
+
+    if (c_pid > 0) {
         //Parent process
         if (pl.bg) {
             std::cout << "[" << c_pid << "]: Background execution" << std::endl;
@@ -93,14 +91,85 @@ int Executor::exec_single(const cppsh::Pipeline& pl){
 
         //.data() converts std::vector<char*> into char**
         execvp(cmd.args[0].c_str(), argv.data());
-    }
 
         //If the process reaches here, execvp failed
         exit(127);
+    }
 }
 
 int Executor::exec_pl(const cppsh::Pipeline& pl) {
     int n = pl.cmds.size();
+    int pipes[n-1][2];
+    pid_t pids[n];
 
-    return 1;
+    for(int i = 0; i<n-1; i++){
+        //create n-1 pipes
+        if (pipe(pipes[i]) == -1){
+            //log error
+            exit(1);
+        }
+    }
+
+    //fork once for each command
+    for (int i=0; i<n; i++){
+        pids[i] = fork();
+
+        if (pids[i] == -1) 
+            throw ShellError(ShellErrorCode::FORK_FAILED);
+
+        if (pids[i] == 0) {
+            //Child process
+
+            //connect stdin to previous pipe (except 1st cmd)
+            if (i>0)
+                dup2(pipes[i-1][0], STDIN_FILENO);
+            
+            //connect stdout to next pipe (except last cmd)
+            if (i<n-1)
+                dup2(pipes[i][1], STDOUT_FILENO);
+
+            //close all pipe ends
+            for (int j=0; j<n-1; j++){
+                close(pipes[j][0]);
+                close(pipes[j][1]);
+            }
+
+            // input redirection
+            if (!pl.cmds[i].input_file.empty()) {
+                int fd = open(pl.cmds[i].input_file.c_str(), O_RDONLY);
+                dup2(fd, STDIN_FILENO);
+                close(fd);
+            }
+
+            // output redirection
+            if (!pl.cmds[i].output_file.empty()) {
+                int flags = pl.cmds[i].append ? O_WRONLY | O_CREAT | O_APPEND
+                                              : O_WRONLY | O_CREAT | O_TRUNC;
+                int fd = open(pl.cmds[i].output_file.c_str(), flags, 0644);
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
+            }
+
+            std::vector<char*> argv = cppsh::to_vchar(pl.cmds[i].args);
+            execvp(pl.cmds[i].args[0].c_str(), argv.data());
+            exit(127);
+        }
+    }
+
+    // parent closes all pipe ends
+    for (int i = 0; i < n-1; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+
+    // parent waits for all children
+    int last_status = 0;
+    for (int i = 0; i < n; i++) {
+        int status;
+        waitpid(pids[i], &status, 0);
+        if (i == n-1 && WIFEXITED(status))
+            last_status = WEXITSTATUS(status);
+    }
+
+    return last_status;
 }

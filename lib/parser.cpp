@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.3.0
+ * @version 0.4.1
  * @date 2026-06-01
  * 
  * @copyright Copyright (c) 2026
@@ -13,20 +13,23 @@
 
 #include "parser.hpp"
 #include "parse_exception.hpp"
+
 #include <iostream>
 #include <sstream>
 
 namespace cppsh {
 
-    cppsh::Command Parser::parse(const std::string& input) const {
+    cppsh::Pipeline Parser::parse(const std::string& input) const {
         std::vector<std::string> tok_vec = tokenize(input);
-        Command cmd;
+        Pipeline pl;
 
-        redirect_io(tok_vec, cmd);
-        to_bg(tok_vec, cmd);
+        is_bg(tok_vec, pl);
+        split(tok_vec, pl);
 
-        cmd.args = tok_vec;
-        return cmd;
+        for(Command& cmd : pl.cmds) {
+            redirect_io(cmd);   
+        }
+        return pl;
     }
 
     std::vector<std::string> Parser::tokenize(const std::string& input) const {
@@ -42,46 +45,73 @@ namespace cppsh {
         return tokens;
     }
 
-    void Parser::redirect_io(std::vector<std::string>& tok_vec, Command& cmd) const  {
+    void Parser::redirect_io(Command& cmd) const  {
         // IO redirection
-        for (int i = 0; i<tok_vec.size(); i++) {
+        for (int i = 0; i<cmd.args.size(); i++) {
             //Input Redirection
-            if (tok_vec[i] == "<"){
-                if (i + 1 >= tok_vec.size())
+            if (cmd.args[i] == "<"){
+                if (i + 1 >= cmd.args.size())
                     throw cppsh::ParseException("missing redirection target after '<'");
 
-                cmd.input_file = tok_vec[i + 1]; // next argument should be the file name
+                cmd.input_file = cmd.args[i + 1]; // next argument should be the file name
 
-                tok_vec.erase(tok_vec.begin() + i); //erase redirection operator
-                tok_vec.erase(tok_vec.begin() + i); //shifted down, erase file name
+                cmd.args.erase(cmd.args.begin() + i); //erase redirection operator
+                cmd.args.erase(cmd.args.begin() + i); //shifted down, erase file name
 
                 i--;
             } 
             //Output Redirection (Append)
-            else if (tok_vec[i] == ">>"){
-                if (i + 1 >= tok_vec.size())
+            else if (cmd.args[i] == ">>"){
+                if (i + 1 >= cmd.args.size())
                     throw cppsh::ParseException("missing redirection target after '>>'");
 
-                cmd.output_file = tok_vec[i + 1];
+                cmd.output_file = cmd.args[i + 1];
                 cmd.append = true; // >> appends instead of overwriting
 
-                tok_vec.erase(tok_vec.begin() + i);
-                tok_vec.erase(tok_vec.begin() + i);
+                cmd.args.erase(cmd.args.begin() + i);
+                cmd.args.erase(cmd.args.begin() + i);
 
                 i--;
             }
             //Output Redirection (Overwrite)
-            else if (tok_vec[i] == ">"){
-                if (i + 1 >= tok_vec.size())
+            else if (cmd.args[i] == ">"){
+                if (i + 1 >= cmd.args.size())
                     throw cppsh::ParseException("missing redirection target after '>'");
 
-                cmd.output_file = tok_vec[i + 1];
+                cmd.output_file = cmd.args[i + 1];
 
-                tok_vec.erase(tok_vec.begin() + i);
-                tok_vec.erase(tok_vec.begin() + i);
+                cmd.args.erase(cmd.args.begin() + i);
+                cmd.args.erase(cmd.args.begin() + i);
 
                 i--;
             }
+        }
+    }
+
+    void Parser::split(std::vector<std::string>& tok_vec, Pipeline& pl) const {
+        for (int i=0; i<tok_vec.size(); i++) {
+            //Look for pipe symbol
+            if (tok_vec[i] == "|"){
+                Command cmd;
+
+                //copy every token until the '|'
+                //there shouldn't exist any other pipe symbols before the pipe in tok_vec[i]
+                cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i);
+                pl.cmds.push_back(cmd);
+
+                //delete the command portion
+                tok_vec.erase(tok_vec.begin(), tok_vec.begin() + i+1);
+
+                //set to -1 so for loop's i++ changes it to 0
+                i = -1;
+            }
+        }
+
+        //add last token if exists
+        if (!tok_vec.empty()) {
+            Command cmd;
+            cmd.args = tok_vec;
+            pl.cmds.push_back(cmd);
         }
     }
 }

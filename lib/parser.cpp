@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.0
+ * @version 0.4.1
  * @date 2026-06-01
  * 
  * @copyright Copyright (c) 2026
@@ -96,14 +96,14 @@ namespace cppsh {
 
                 //copy every token until the '|'
                 //there shouldn't exist any other pipe symbols before the pipe in tok_vec[i]
-                cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i-1);
+                cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i);
                 pl.cmds.push_back(cmd);
 
                 //delete the command portion
-                tok_vec.erase(tok_vec.begin(), tok_vec.begin() + i);
+                tok_vec.erase(tok_vec.begin(), tok_vec.begin() + i+1);
 
-                //reset back to counter
-                i = 0;
+                //set to -1 so for loop's i++ changes it to 0
+                i = -1;
             }
         }
 

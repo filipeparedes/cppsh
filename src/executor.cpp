@@ -4,7 +4,7 @@
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.0
+ * @version 0.4.1
  * @date 2026-06-05
  * 
  * @copyright Copyright (c) 2026
@@ -99,12 +99,12 @@ int Executor::exec_single(const cppsh::Pipeline& pl){
 
 int Executor::exec_pl(const cppsh::Pipeline& pl) {
     int n = pl.cmds.size();
-    int pipes[n-1][2];
-    pid_t pids[n];
+    std::vector<std::array<int, 2>> pipes(n - 1);
+    std::vector<pid_t> pids(n);
 
     for(int i = 0; i<n-1; i++){
         //create n-1 pipes
-        if (pipe(pipes[i]) == -1){
+        if (pipe(pipes[i].data()) == -1){
             //log error
             exit(1);
         }
@@ -137,6 +137,10 @@ int Executor::exec_pl(const cppsh::Pipeline& pl) {
             // input redirection
             if (!pl.cmds[i].input_file.empty()) {
                 int fd = open(pl.cmds[i].input_file.c_str(), O_RDONLY);
+                if (fd == -1)
+                    //log error
+                    exit(1);
+
                 dup2(fd, STDIN_FILENO);
                 close(fd);
             }
@@ -146,6 +150,11 @@ int Executor::exec_pl(const cppsh::Pipeline& pl) {
                 int flags = pl.cmds[i].append ? O_WRONLY | O_CREAT | O_APPEND
                                               : O_WRONLY | O_CREAT | O_TRUNC;
                 int fd = open(pl.cmds[i].output_file.c_str(), flags, 0644);
+                if(fd == -1)
+                    //log error
+                    exit(1);
+
+
                 dup2(fd, STDOUT_FILENO);
                 close(fd);
             }

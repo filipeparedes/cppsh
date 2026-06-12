@@ -182,7 +182,7 @@ Error codes follow a structured range:
 - ✅ I/O Redirection (>, >>, <)
 - ✅ Pipes (|)
 - ✅ Background execution (&)
-- Migrate to C++20 Modules + DOD Architecture (unplanned)
+- Migrate to C++23 Modules + DOD Architecture (unplanned)
 - Quotes and escape characters
 
 ### v0.4-beta

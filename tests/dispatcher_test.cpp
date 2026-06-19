@@ -3,6 +3,7 @@
 #include "errors/shell_error.hpp"
 #include "context.hpp"
 #include "pipeline.hpp"
+#include <algorithm>
 
 class DispatcherTest : public ::testing::Test {
 protected:

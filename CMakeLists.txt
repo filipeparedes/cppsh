@@ -1,9 +1,16 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
+# LLVM clang++
+set(CMAKE_CXX_COMPILER /opt/homebrew/opt/llvm/bin/clang++)
+
+
 project(cppsh)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# enable modules
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 include_directories(src src/include src/commands/builtins/include lib include)
 

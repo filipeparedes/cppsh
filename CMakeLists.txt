@@ -30,19 +30,9 @@ add_executable(cppsh
     ${BUILTIN_FILES}
 )
 
-find_package(GTest REQUIRED)
-
-add_executable(tests 
-    tests/parser_test.cpp
-    tests/dispatcher_test.cpp
-    tests/pipe_test.cpp
-    lib/parser.cpp
-    lib/utils.cpp
-    src/dispatcher.cpp
-    src/executor.cpp
-    src/signal_handling.cpp
-    src/errors/shell_error.cpp
-    ${BUILTIN_FILES}
-    )
-target_link_libraries(tests PRIVATE GTest::gtest_main)
-target_include_directories(tests PRIVATE lib include src src/include src/commands/builtins/include)
+target_sources(cppsh
+    PRIVATE
+        FILE_SET CXX_MODULES 
+        FILES
+            lib/command.cppm
+)

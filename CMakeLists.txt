@@ -35,4 +35,5 @@ target_sources(cppsh
         FILE_SET CXX_MODULES 
         FILES
             lib/command.cppm
+            lib/pipeline.cppm
 )

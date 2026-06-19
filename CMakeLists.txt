@@ -24,7 +24,6 @@ add_executable(cppsh
     src/executor.cpp
     src/signal_handling.cpp
     src/errors/shell_error.cpp
-    lib/utils.cpp
     lib/parser.cpp
     ${COMMAND_FILES}
     ${BUILTIN_FILES}
@@ -36,4 +35,5 @@ target_sources(cppsh
         FILES
             lib/command.cppm
             lib/pipeline.cppm
+            lib/utils.cppm
 )

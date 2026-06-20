@@ -8,7 +8,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @date 2026-06-19
  *
  * @copyright Copyright (c) 2026
@@ -20,10 +20,10 @@ module;
 export module cppsh.command_entry;
 
 import cppsh.command;
-import cppsh.shell_context;
+import cppsh.shell_state;
 
 export using command_handler_t =
-    int(*)(const command_t&, shell_context_t&);
+    int(*)(const command_t&, shell_state_t&);
 
 /**
  * @brief Represents an entry in the command dispatch table.

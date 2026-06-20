@@ -8,7 +8,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @date 2026-06-19
  *
  * @copyright Copyright (c) 2026
@@ -19,7 +19,7 @@ module;
 #include <string>
 #include <span>
 
-export module cppsh.shell_context;
+export module cppsh.shell_state;
 
 /**
  * @brief Holds the runtime state of the shell.

@@ -1,24 +1,35 @@
+module;
 /**
- * @file cd.cpp
+ * @file cd.cppm
  * @brief Implementation of the cd builtin command.
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.3.0
- * @date 2026-05-06
+ * @version 1.0.0
+ * @date 2026-06-19
  *
  * @copyright Copyright (c) 2026
  *
  */
 
-#include "cd.hpp"
 #include "errors/shell_error.hpp"
 
 #include <unistd.h>
 #include <iostream>
 #include <string>
 
-int builtin_cd(const cppsh::Command& command, ShellContext& context) {
+export module cppsh.builtin.cd;
+
+import cppsh.command;
+import cppsh.shell_state;
+
+/**
+ * @brief Changes directory.
+ *
+ * @param command The parsed command (args ignored).
+ * @return Status code.
+ */
+export int builtin_cd(const command_t& command, shell_state_t& state) {
     std::string dir;
 
     //No argument -> go to HOME, fallback to root

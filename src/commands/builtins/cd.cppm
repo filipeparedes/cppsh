@@ -5,23 +5,23 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.0
- * @date 2026-06-19
+ * @version 1.1.0
+ * @date 2026-06-20
  *
  * @copyright Copyright (c) 2026
  *
  */
 
-#include "errors/shell_error.hpp"
-
 #include <unistd.h>
 #include <iostream>
 #include <string>
+#include <expected>
 
 export module cppsh.builtin.cd;
 
 import cppsh.command;
 import cppsh.shell_state;
+import cppsh.shell_errors;
 
 /**
  * @brief Changes directory.
@@ -29,7 +29,7 @@ import cppsh.shell_state;
  * @param command The parsed command (args ignored).
  * @return Status code.
  */
-export int builtin_cd(const command_t& command, shell_state_t& state) {
+export std::expected<int, shell_error_t> builtin_cd(const command_t& command, shell_state_t& state) {
     std::string dir;
 
     //No argument -> go to HOME, fallback to root
@@ -43,7 +43,7 @@ export int builtin_cd(const command_t& command, shell_state_t& state) {
 
     // Change directory
     if (chdir(dir.c_str()) == -1) {
-        throw ShellError(ShellErrorCode::INVALID_PATH, command.args[0], dir);
+        return std::unexpected(shell_error_t{error_code_t::INVALID_PATH, command.args[0], dir});
     }
 
    return 0;

@@ -6,7 +6,7 @@ module;
  * @author Filipe Paredes (filipeparedes3@gmail.com) 
  * 
  * @version 1.0.0
- * @date 2026-06-19
+ * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
  * 

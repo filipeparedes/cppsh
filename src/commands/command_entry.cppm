@@ -22,6 +22,7 @@ export module cppsh.command_entry;
 
 import cppsh.command;
 import cppsh.shell_state;
+import cppsh.shell_errors;
 
 export using command_handler_t =
     std::expected<int, shell_error_t>(*)(const command_t&, shell_state_t&);

@@ -22,6 +22,7 @@ export module cppsh.dispatching;
 import cppsh.shell_errors;
 import cppsh.shell_state;
 import cppsh.command_entry;
+import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
 import cppsh.utils;

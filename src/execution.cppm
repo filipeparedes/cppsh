@@ -69,7 +69,7 @@ std::expected<int, shell_error_t> exec_single(const pipeline_t& pl){
         signal(SIGINT, SIG_DFL); //Reset signal behaviour to default in child process
         signal(SIGTSTP, SIG_DFL);
 
-        std::vector<char*> argv = cppsh::to_vchar(cmd.args);
+        std::vector<char*> argv = to_vchar(cmd.args);
 
         //Input redirection
         if (!cmd.input_file.empty()) {
@@ -178,7 +178,7 @@ std::expected<int, shell_error_t> exec_pl(const pipeline_t& pl) {
                 close(fd);
             }
 
-            std::vector<char*> argv = cppsh::to_vchar(pl.cmds[i].args);
+            std::vector<char*> argv = to_vchar(pl.cmds[i].args);
             execvp(pl.cmds[i].args[0].c_str(), argv.data());
             exit(127);
         }

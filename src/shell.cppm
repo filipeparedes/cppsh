@@ -77,12 +77,14 @@ export std::expected<void, shell_error_t> run() {
         //Parse input into Command-type obj
         std::expected<pipeline_t, std::string> par = parse(input);
         if (!par) {
-            cppsh::print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});
+            print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});
             continue;
         }
 
         std::expected<int, shell_error_t> dis = dispatch(par.value(), state);
         if (!dis)
-            cppsh::print(dis.error());
+            print(dis.error());
     }
+
+    return {};
 }

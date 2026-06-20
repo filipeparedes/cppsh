@@ -92,6 +92,7 @@ std::expected<void, std::string> redirect_io(command_t& cmd) {
             i--;
         }
     }
+    return {};
 }
 
 /**

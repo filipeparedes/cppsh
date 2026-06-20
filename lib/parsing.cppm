@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.0.0
- * @date 2026-06-19
+ * @version 1.1.0
+ * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -17,30 +17,12 @@ module;
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <expected>
 
 export module cppsh.parsing;
 
 import cppsh.pipeline;
 import cppsh.command;
-
-/**
- * @brief Parses a raw input line into a Pipeline.
- * 
- * @param input The raw input string from the user.
- * @return A Pipeline struct with populated Commands.
- */
-export pipeline_t parse(const std::string& input) {
-    std::vector<std::string> tok_vec = tokenize(input);
-    pipeline_t pl;
-
-    is_bg(tok_vec, pl);
-    split(tok_vec, pl);
-
-    for(command_t& cmd : pl.cmds) {
-        redirect_io(cmd);   
-    }
-    return pl;
-}
 
 /**
  * @brief Splits the input string into tokens by whitespace.
@@ -69,13 +51,13 @@ std::vector<std::string> tokenize(const std::string& input) {
  * 
  * @param cmd [in, out] The command object.
  */
-void redirect_io(command_t& cmd) {
+std::expected<void, std::string> redirect_io(command_t& cmd) {
     // IO redirection
     for (int i = 0; i<cmd.args.size(); i++) {
         //Input Redirection
         if (cmd.args[i] == "<"){
             if (i + 1 >= cmd.args.size())
-                throw std::runtime_error("missing redirection target after '<'");
+                return std::unexpected("missing redirection target after '<'");
 
             cmd.input_file = cmd.args[i + 1]; // next argument should be the file name
 
@@ -87,7 +69,7 @@ void redirect_io(command_t& cmd) {
         //Output Redirection (Append)
         else if (cmd.args[i] == ">>"){
             if (i + 1 >= cmd.args.size())
-                throw std::runtime_error("missing redirection target after '>>'");
+                return std::unexpected("missing redirection target after '>>'");
 
             cmd.output_file = cmd.args[i + 1];
             cmd.append = true; // >> appends instead of overwriting
@@ -100,7 +82,7 @@ void redirect_io(command_t& cmd) {
         //Output Redirection (Overwrite)
         else if (cmd.args[i] == ">"){
             if (i + 1 >= cmd.args.size())
-                throw std::runtime_error("missing redirection target after '>'");
+                return std::unexpected("missing redirection target after '>'");
 
             cmd.output_file = cmd.args[i + 1];
 
@@ -159,4 +141,25 @@ void is_bg(std::vector<std::string>& tok_vec, pipeline_t& pl) {
         pl.bg = true;
         tok_vec.pop_back();
     }
+}
+
+/**
+ * @brief Parses a raw input line into a Pipeline.
+ * 
+ * @param input The raw input string from the user.
+ * @return expected: A Pipeline struct with populated Commands.
+ * @return unexpected: A string with the error message
+ */
+export std::expected<pipeline_t, std::string> parse(const std::string& input) {
+    std::vector<std::string> tok_vec = tokenize(input);
+    pipeline_t pl;
+
+    is_bg(tok_vec, pl);
+    split(tok_vec, pl);
+
+    for(command_t& cmd : pl.cmds) {
+        std::expected<void, std::string> res = redirect_io(cmd);
+        if (!res) return std::unexpected(res.error());   
+    }
+    return pl;
 }

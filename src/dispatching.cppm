@@ -1,45 +1,59 @@
+module;
 /**
- * @file dispatcher.cpp
+ * @file dispatching.cppm
  * @brief Implementation for dispatcher.hpp
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.6.0
+ * @version 1.0.0
  * @date 2026-05-03
  * 
  * @copyright Copyright (c) 2026
  * 
  */
-
-#include "dispatcher.hpp"
-#include "errors/shell_error.hpp"
-#include "commands/commands.hpp"
-#include "commands/entry.hpp"
-#include "utils.hpp"
-
 #include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
+#include <vector>
+#include <expected>
 
-Dispatcher::Dispatcher() {
-    entries = {
-    {"exit", builtin_exit, "Exit the shell"},
-    {"cd", builtin_cd, "Change directory"},
-    {"history", builtin_history, "List user's input history"},
-    {"help", builtin_help, "List all built-in commands and their brief descriptions"}
-    };
-}
+export module cppsh.dispatching;
 
-int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
+import cppsh.shell_errors;
+import cppsh.shell_state;
+import cppsh.command_entry;
+import cppsh.pipeline;
+import cppsh.execution;
+import cppsh.utils;
+import cppsh.builtin.cd;
+import cppsh.builtin.exit;
+import cppsh.builtin.history;
+import cppsh.builtin.help;
+
+const std::vector<command_entry_t> entries = {
+    {"exit",    "Exit the shell",           "exit",        builtin_exit},
+    {"cd",      "Change directory",         "cd [dir]",    builtin_cd},
+    {"history", "List user's input history","history",     builtin_history},
+};
+
+/**
+ * @brief Dispatches a Pipeline of Commands
+ * 
+ * @param pl -  the Pipeline to dispatch
+ * @return The status code
+ */
+export std::expected<int, shell_error_t> dispatch(const pipeline_t& pl, shell_state_t& state) {
     if (pl.cmds.empty()) return 0;
-    cppsh::Command cmd;
+    command_t cmd;
 
     //If there is only one entry, check built ins
     if (pl.cmds.size() == 1) {
         cmd = pl.cmds[0];
 
-        for (const CommandEntry& entry : entries) {
-            if (cppsh::iequals(entry.name, cmd.args[0])){
+        //TODO: Handle help separately
+
+        for (const command_entry_t& entry : entries) {
+            if (iequals(entry.name, cmd.args[0])){
                 //save default IO direction
                 int saved_stdout = dup(STDOUT_FILENO);
                 int saved_stdin = dup(STDIN_FILENO);
@@ -73,7 +87,7 @@ int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
                 }
 
                 //TODO: background execution for built ins
-                int result = entry.handler(cmd, context);
+                std::expected<int, shell_error_t> result = entry.handler(cmd, state);
 
                 //restore IO direction back to normal
                 dup2(saved_stdout, STDOUT_FILENO);
@@ -88,10 +102,16 @@ int Dispatcher::dispatch(const cppsh::Pipeline& pl, ShellContext& context) {
         }
     }
     //Multiple entries -> straight to executor
-    int res = executor.exec(pl);
-    if (res == 127)
-        throw ShellError(ShellErrorCode::COMMAND_NOT_FOUND, pl.cmds[0].args[0]);
+    std::expected<int, shell_error_t> res = exec(pl);
 
-    return res;
+    //error
+    if (!res)
+        return res;
+
+    //returns value -> check for 127
+    if (res.value() == 127)
+        return std::unexpected(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
+
+    return res.value();
 }
 

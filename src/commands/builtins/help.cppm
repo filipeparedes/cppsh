@@ -5,7 +5,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-06-20
  *
  * @copyright Copyright (c) 2026
@@ -14,6 +14,7 @@ module;
 #include <iostream>
 #include <span>
 #include <expected>
+#include <print>
 
 export module cppsh.builtin.help;
 
@@ -30,7 +31,7 @@ import cppsh.shell_errors;
 export std::expected<int, shell_error_t> builtin_help(const command_t& command, std::span<const command_entry_t> entries) {
     int i = 1;
     for (const command_entry_t entry : entries) {
-        std::cout << i++ << " " << entry.name << " - " << entry.description << "\n";
+        std::println("{} {} - {}", i++, entry.name, entry.description);
     }
 
     return 0;

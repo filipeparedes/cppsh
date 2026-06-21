@@ -5,7 +5,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-06-20
  *
  * @copyright Copyright (c) 2026
@@ -15,6 +15,7 @@ module;
 #include <cstdlib>
 #include <iostream>
 #include <expected>
+#include <print>
 
 export module cppsh.builtin.exit;
 
@@ -29,6 +30,6 @@ import cppsh.shell_errors;
  * @return Never returns — calls exit(0).
  */
 export std::expected<int, shell_error_t> builtin_exit(const command_t& command, shell_state_t& state) {
-    std::cout << "Exiting program... \n";
+    std::println("Exiting program...");
     exit(0);
 }

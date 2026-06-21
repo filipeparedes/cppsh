@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com) 
  * 
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
@@ -16,6 +16,7 @@ module;
 #include <cerrno>
 #include <iomanip>
 #include <string>
+#include <print>
 
 export module cppsh.shell_errors;
 
@@ -68,28 +69,27 @@ bool is_system_error(const shell_error_t& error){
  */
 export void print(const shell_error_t& error){
     if (is_system_error(error)){
-        std::cerr << "error[0x" << std::hex << std::setw(4) << std::setfill('0') 
-              << static_cast<int>(error.code) << "]: ";
-        std::cerr << "os error: " << errno << " (" << strerror(errno) << ")" << std::endl;
+        std::println(stderr, "error[0x{:04x}]: ", static_cast<int>(error.code));
+        std::println(stderr, "os error: {} ({})", errno, strerror(errno));
         return;
     }
 
     //User error
     switch(error.code){
         case error_code_t::INVALID_PATH:
-            std::cerr << error.cmd << ": " << error.arg << ": No such directory" << std::endl; 
+            std::println(stderr, "{}: {}: No such directory", error.cmd, error.arg);
             break;
         case error_code_t::COMMAND_NOT_FOUND:
-            std::cerr << error.cmd << ": Unknown command" << std::endl;
+            std::println(stderr, "{}: Unknown command", error.cmd);
             break;
         case error_code_t::INVALID_ARGS:
-            std::cerr << error.cmd << ": '" << error.arg << "' Invalid arguments" << std::endl; 
-            std::cerr << "Usage: " << error.usage << std::endl;   
+            std::println(stderr, "{}: '{}' Invalid arguments", error.cmd, error.arg);
+            std::println(stderr, "Usage: {}", error.usage);
             break;
         case error_code_t::MISSING_REDIRECTION_TARGET:
-            std::cerr << error.cmd << ": " << error.usage << std::endl;
+            std::println(stderr, "{}: {}", error.cmd, error.usage);
             break;
         default:
-            std::cerr << "An unexpected error has occurred." << std::endl;
+            std::println(stderr, "An unexpected error has occurred.");
     }
 }

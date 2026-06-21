@@ -17,7 +17,6 @@ module;
 
 #include <vector>
 #include <string>
-#include <span>
 
 export module cppsh.shell_state;
 

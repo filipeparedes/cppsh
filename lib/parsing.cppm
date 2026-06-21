@@ -12,11 +12,9 @@ module;
  * 
 */
 
-#include <iostream>
 #include <sstream>
 #include <vector>
 #include <string>
-#include <stdexcept>
 #include <expected>
 
 export module cppsh.parsing;

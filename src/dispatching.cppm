@@ -11,7 +11,6 @@ module;
  * @copyright Copyright (c) 2026
  * 
  */
-#include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <vector>

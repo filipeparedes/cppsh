@@ -8,7 +8,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
@@ -21,6 +21,7 @@ module;
 #include <unistd.h>
 #include <limits.h>
 #include <expected>
+#include <print>
 
 export module cppsh.shell;
 
@@ -40,7 +41,7 @@ import cppsh.pipeline;
  * 
  */
 void print_prompt(const std::string& user, const std::string& hostname) {
-    std::cout << user << "@" << hostname << ":" << get_cwd() << "$ " << std::flush;
+    std::print("{}@{}:{}$ ", user, hostname, get_cwd());
 }
 
 /**
@@ -65,7 +66,7 @@ export std::expected<void, shell_error_t> run() {
 
         //EOF (CTRL+D) - exit gracefully
         if (input.empty()) {
-            std::cout << std::endl;
+            std::println("");
             break;
         }
 

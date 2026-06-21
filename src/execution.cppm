@@ -6,7 +6,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
@@ -19,6 +19,7 @@ module;
 #include <expected>
 #include <vector>
 #include <array>
+#include <print>
 
 export module cppsh.execution;
 
@@ -47,7 +48,7 @@ std::expected<int, shell_error_t> exec_single(const pipeline_t& pl){
     if (c_pid > 0) {
         //Parent process
         if (pl.bg) {
-            std::cout << "[" << c_pid << "]: Background execution" << std::endl;
+            std::println("[{}]: Background execution", c_pid);
             return 0;
         }
 

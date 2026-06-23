@@ -2,20 +2,21 @@
  * @file main.cpp
  * @brief Entry point for cppsh.
  * 
- * Instantiates the Shell and starts the main loop.
+ * Starts the main shell loop.
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
- * @version 0.1
- * @date 2026-04-28
+ * @version 0.2.0
+ * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
  * 
  */
 
- #include "shell.hpp"
+ import cppsh.shell;
 
  int main() {
-    Shell shell;
-    shell.run();
-    return 0;
+   auto res = run();
+   if (!res)
+      return 1;
+   return 0;
  }

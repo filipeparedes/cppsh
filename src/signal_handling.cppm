@@ -1,19 +1,20 @@
+module;
 /**
- * @file signal_handling.cpp
- * @brief Implementation for signal_handling.hpp, as well as some private functions for specific signals
+ * @file signal_handling.cppm
+ * @brief Implementation for signal handling functions
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
- * @version 0.1
- * @date 2026-05-14
+ * @version 1.0.0
+ * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
  * 
  */
 
-#include "include/signal_handling.hpp"
-
 #include <csignal>
 #include <unistd.h>
+
+export module cppsh.signal_handling;
 
 /**
   * @brief Private function
@@ -44,7 +45,10 @@ void handle_sigtstp(int signum) {
     write(STDOUT_FILENO, "\r\033[K", 4); //hide ^Z
 }
 
-void handle_signal() {
+/**
+ * @brief Function to handle all signals.
+ */
+export void handle_signal() {
     struct sigaction sa_int;
     sa_int.sa_handler = handle_sigint;
     sigemptyset(&sa_int.sa_mask);

@@ -30,3 +30,32 @@ target_sources(cppsh
         src/shell.cppm
         src/signal_handling.cppm
 )
+
+find_package(GTest REQUIRED)
+
+add_executable(tests
+    tests/parser_test.cpp
+    tests/dispatcher_test.cpp
+    tests/pipe_test.cpp
+)
+
+target_sources(tests
+    PUBLIC
+    FILE_SET CXX_MODULES FILES
+        lib/command.cppm
+        lib/pipeline.cppm
+        lib/parsing.cppm
+        lib/utils.cppm
+        src/commands/command_entry.cppm
+        src/commands/builtins/cd.cppm
+        src/commands/builtins/exit.cppm
+        src/commands/builtins/help.cppm
+        src/commands/builtins/history.cppm
+        src/dispatching.cppm
+        src/execution.cppm
+        src/shell_errors.cppm
+        src/shell_state.cppm
+        src/signal_handling.cppm
+)
+
+target_link_libraries(tests PRIVATE GTest::gtest_main)

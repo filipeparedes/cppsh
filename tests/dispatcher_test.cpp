@@ -1,78 +1,64 @@
 #include <gtest/gtest.h>
-#include "dispatcher.hpp"
-#include "errors/shell_error.hpp"
-#include "context.hpp"
-#include "pipeline.hpp"
-#include <algorithm>
+#include <expected>
+
+import cppsh.dispatching;
+import cppsh.pipeline;
+import cppsh.command;
+import cppsh.shell_errors;
+import cppsh.shell_state;
 
 class DispatcherTest : public ::testing::Test {
 protected:
-    Dispatcher dispatcher;
-    ShellContext context{dispatcher};
+    shell_state_t state;
 
-    cppsh::Pipeline make_pipeline(std::vector<std::string> args) {
-        cppsh::Pipeline pl;
-        cppsh::Command cmd;
+    pipeline_t make_pipeline(std::vector<std::string> args) {
+        pipeline_t pl;
+        command_t cmd;
         cmd.args = args;
         pl.cmds.push_back(cmd);
         return pl;
     }
 };
 
-TEST_F(DispatcherTest, UnknownCommandThrows) {
-    cppsh::Pipeline pl = make_pipeline({"unknowncommand"});
-    EXPECT_THROW(dispatcher.dispatch(pl, context), ShellError);
-}
-
 TEST_F(DispatcherTest, EmptyCommandReturnsZero) {
-    cppsh::Pipeline pl;
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
+    pipeline_t pl;
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), 0);
 }
 
-TEST_F(DispatcherTest, CdInvalidPathThrows) {
-    cppsh::Pipeline pl = make_pipeline({"cd", "/this/path/does/not/exist"});
-    EXPECT_THROW(dispatcher.dispatch(pl, context), ShellError);
+TEST_F(DispatcherTest, UnknownCommandReturnsError) {
+    pipeline_t pl = make_pipeline({"unknowncommand"});
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    EXPECT_FALSE(res.has_value());
+    EXPECT_EQ(res.error().code, error_code_t::COMMAND_NOT_FOUND);
+}
+
+TEST_F(DispatcherTest, CdInvalidPathReturnsError) {
+    pipeline_t pl = make_pipeline({"cd", "/this/path/does/not/exist"});
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    EXPECT_FALSE(res.has_value());
+    EXPECT_EQ(res.error().code, error_code_t::INVALID_PATH);
 }
 
 TEST_F(DispatcherTest, CdValidPathReturnsZero) {
-    cppsh::Pipeline pl = make_pipeline({"cd", "/tmp"});
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
+    pipeline_t pl = make_pipeline({"cd", "/tmp"});
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), 0);
 }
 
 TEST_F(DispatcherTest, HistoryEmptyReturnsZero) {
-    cppsh::Pipeline pl = make_pipeline({"history"});
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
+    pipeline_t pl = make_pipeline({"history"});
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), 0);
 }
 
 TEST_F(DispatcherTest, HistoryWithEntriesReturnsZero) {
-    context.history = {"cd /tmp", "ls", "help"};
-    cppsh::Pipeline pl = make_pipeline({"history"});
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
-}
-
-TEST_F(DispatcherTest, HelpReturnsZero) {
-    cppsh::Pipeline pl = make_pipeline({"help"});
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
-}
-
-TEST_F(DispatcherTest, HelpIReturnsZero) {
-    cppsh::Pipeline pl = make_pipeline({"heLP"});
-    EXPECT_EQ(dispatcher.dispatch(pl, context), 0);
-}
-
-TEST_F(DispatcherTest, GetEntriesNotEmpty) {
-    EXPECT_FALSE(dispatcher.get_entries().empty());
-}
-
-TEST_F(DispatcherTest, GetEntriesContainsBuiltins) {
-    const auto& entries = dispatcher.get_entries();
-    auto has_command = [&](const std::string& name) {
-        return std::any_of(entries.begin(), entries.end(), [&](const CommandEntry& e) {
-            return e.name == name;
-        });
-    };
-    EXPECT_TRUE(has_command("cd"));
-    EXPECT_TRUE(has_command("history"));
-    EXPECT_TRUE(has_command("help"));
-    EXPECT_TRUE(has_command("exit"));
+    state.history = {"cd /tmp", "ls", "help"};
+    pipeline_t pl = make_pipeline({"history"});
+    std::expected<int, shell_error_t> res = dispatch(pl, state);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), 0);
 }

@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.0.0
- * @date 2026-05-03
+ * @version 1.1.0
+ * @date 2026-06-23
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -50,7 +50,10 @@ export std::expected<int, shell_error_t> dispatch(const pipeline_t& pl, shell_st
     if (pl.cmds.size() == 1) {
         cmd = pl.cmds[0];
 
-        //TODO: Handle help separately
+        //Handle help cmd separately
+        if (iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h")) {
+            return builtin_help(cmd, entries);
+        }
 
         for (const command_entry_t& entry : entries) {
             if (iequals(entry.name, cmd.args[0])){

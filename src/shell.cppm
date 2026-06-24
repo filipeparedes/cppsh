@@ -8,8 +8,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-20
+ * @version 1.2.0
+ * @date 2026-06-24
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -21,6 +21,7 @@ module;
 #include <limits.h>
 #include <expected>
 #include <print>
+#include <optional>
 
 export module cppsh.shell;
 
@@ -61,16 +62,18 @@ export std::expected<void, shell_error_t> run() {
     while(true) {
         print_prompt(user, hostname);
 
-        std::string input = read_input();
+        std::optional<std::string> input_opt = read_input();
 
         //EOF (CTRL+D) - exit gracefully
-        if (input.empty()) {
+        if (!input_opt) {
             std::println("");
             break;
         }
 
+        std::string input = std::move(input_opt.value());
+
         //Ignore blank lines
-        if (input.find_first_not_of(" \t") == std::string::npos) continue;
+        if (input.empty() || input.find_first_not_of(" \t") == std::string::npos) continue;
 
         state.history.push_back(input);
 

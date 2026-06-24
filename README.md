@@ -180,8 +180,9 @@ Error codes follow a structured range:
 
 ### v0.3-beta (WIP)
 - ✅ I/O Redirection (>, >>, <)
-- Pipes (|)
-- Background execution (&)
+- ✅ Pipes (|)
+- ✅ Background execution (&)
+- ✅ Migrate to C++23 Modules + DOD Architecture (unplanned)
 - Quotes and escape characters
 
 ### v0.4-beta

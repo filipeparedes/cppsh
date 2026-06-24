@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.0.0
- * @date 2026-06-19
+ * @version 1.1.0
+ * @date 2026-06-24
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -17,6 +17,7 @@ module;
 #include <pwd.h>
 #include <unistd.h>
 #include <vector>
+#include <optional>
 
 export module cppsh.utils;
 
@@ -25,10 +26,10 @@ export module cppsh.utils;
  * 
  * @return The line entered by the user, or an empty string on EOF.
  */
-export std::string read_input() {
+export std::optional<std::string> read_input() {
     std::string line;
 
-    if (!std::getline(std::cin, line)) return "";
+    if (!std::getline(std::cin, line)) return std::nullopt;
 
     return line;
 }

@@ -5,13 +5,14 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-20
+ * @version 1.2.0
+ * @date 2026-06-24
  * 
  * @copyright Copyright (c) 2026
  * 
 */
 
+#include <cctype>
 #include <sstream>
 #include <vector>
 #include <string>
@@ -22,20 +23,70 @@ export module cppsh.parsing;
 import cppsh.pipeline;
 import cppsh.command;
 
+enum class Quote {
+    None,
+    Double,
+    Single
+};
+
 /**
- * @brief Splits the input string into tokens by whitespace.
+ * @brief Splits the input string into tokens.
+ *    Accounts for quotes, and escape characters.
+ *    Reads the input char by char.
+ *    Ignores '\' at the end of the string.
+ *    Unclosed quotes '"' or "'" will treat everything as a literal until EOF
  * 
  * @param input The raw input string.
  * @return A vector of string tokens.
  */
 std::vector<std::string> tokenize(const std::string& input) {
     std::vector<std::string> tokens;
-    std::stringstream stream(input);
-    std::string token;
+    bool is_escaped = false;
+    Quote quote = Quote::None;
 
-    //get each token from the stream
-    while (stream >> token){
-        tokens.push_back(token);
+    std::string current;
+    //loop the string char by char
+    for (char c : input){
+        if (is_escaped) {
+            current += c;
+            is_escaped = false;
+            continue;
+        }
+        if (c == '\\' && quote != Quote::Single){
+            is_escaped = true;
+            continue;
+        }
+        if (c == '"' && quote == Quote::None) {
+            quote = Quote::Double;
+            continue;
+        }
+        if (c == '"' && quote == Quote::Double) {
+            quote = Quote::None;
+            continue;
+        }
+        if (c == '\'' && quote == Quote::None) {
+            quote = Quote::Single;
+            continue;
+        }
+        if (c == '\'' && quote == Quote::Single) {
+            quote = Quote::None;
+            continue;
+        }
+        
+        if(std::isspace(static_cast<unsigned char>(c)) && quote == Quote::None){
+            //ignore empty tokens, like ""
+            if(!current.empty()){
+                tokens.push_back(current);
+                current.clear();
+            }
+        }
+        else {
+            current += c;
+        }
+    }
+    //add last token
+    if (!current.empty()) {
+        tokens.push_back(current);
     }
 
     return tokens;

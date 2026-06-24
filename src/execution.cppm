@@ -1,43 +1,53 @@
+module;
 /**
- * @file executor.cpp
- * @brief Implementation for executor.hpp
+ * @file execution.cppm
+ * @brief Implementation for functions related to execution
+ * of external binaries.
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 0.4.1
- * @date 2026-06-05
+ * @version 1.1.0
+ * @date 2026-06-20
  * 
  * @copyright Copyright (c) 2026
  * 
  */
-
-#include "include/executor.hpp"
-#include "errors/shell_error.hpp"
-
-#include "utils.hpp"
 #include <unistd.h>
-#include <iostream>
 #include <csignal>
 #include <fcntl.h>
+#include <expected>
+#include <vector>
+#include <array>
+#include <print>
 
-int Executor::exec(const cppsh::Pipeline& pl) {
-    if (pl.cmds.empty()) return 0;
+export module cppsh.execution;
 
-    return pl.cmds.size() == 1 ? exec_single(pl) : exec_pl(pl);
-}
+import cppsh.shell_errors;
+import cppsh.utils;
+import cppsh.pipeline;
+import cppsh.shell_state;
+import cppsh.command;
 
-int Executor::exec_single(const cppsh::Pipeline& pl){
-    cppsh::Command cmd = pl.cmds[0];
+/**
+ * @brief Executes a single command in a child process via fork + execvp.
+ * 
+ * Handles I/O redirection and background execution for a single command.
+ * 
+ * @param cmd The pipeline with the command to execute.
+ * @return int Exit code of the child process, or 127 if the command was not found.
+ */
+std::expected<int, shell_error_t> exec_single(const pipeline_t& pl){
+    command_t cmd = pl.cmds[0];
 
     pid_t c_pid = fork();
 
     if (c_pid == -1) 
-        throw ShellError(ShellErrorCode::FORK_FAILED);
+        return std::unexpected(shell_error_t{error_code_t::FORK_FAILED});
 
     if (c_pid > 0) {
         //Parent process
         if (pl.bg) {
-            std::cout << "[" << c_pid << "]: Background execution" << std::endl;
+            std::println("[{}]: Background execution", c_pid);
             return 0;
         }
 
@@ -59,7 +69,7 @@ int Executor::exec_single(const cppsh::Pipeline& pl){
         signal(SIGINT, SIG_DFL); //Reset signal behaviour to default in child process
         signal(SIGTSTP, SIG_DFL);
 
-        std::vector<char*> argv = cppsh::to_vchar(cmd.args);
+        std::vector<char*> argv = to_vchar(cmd.args);
 
         //Input redirection
         if (!cmd.input_file.empty()) {
@@ -97,7 +107,16 @@ int Executor::exec_single(const cppsh::Pipeline& pl){
     }
 }
 
-int Executor::exec_pl(const cppsh::Pipeline& pl) {
+/**
+ * @brief Executes a pipeline of commands connected by pipes.
+ * 
+ * Creates N-1 pipes for N commands, forks a child process for each command,
+ * and connects stdout of each process to stdin of the next via dup2.
+ * 
+ * @param pl The pipeline of commands to execute.
+ * @return int Exit code of the last command in the pipeline.
+ */
+std::expected<int, shell_error_t> exec_pl(const pipeline_t& pl) {
     int n = pl.cmds.size();
     std::vector<std::array<int, 2>> pipes(n - 1);
     std::vector<pid_t> pids(n);
@@ -115,7 +134,7 @@ int Executor::exec_pl(const cppsh::Pipeline& pl) {
         pids[i] = fork();
 
         if (pids[i] == -1) 
-            throw ShellError(ShellErrorCode::FORK_FAILED);
+            return std::unexpected(shell_error_t{error_code_t::FORK_FAILED});
 
         if (pids[i] == 0) {
             //Child process
@@ -159,7 +178,7 @@ int Executor::exec_pl(const cppsh::Pipeline& pl) {
                 close(fd);
             }
 
-            std::vector<char*> argv = cppsh::to_vchar(pl.cmds[i].args);
+            std::vector<char*> argv = to_vchar(pl.cmds[i].args);
             execvp(pl.cmds[i].args[0].c_str(), argv.data());
             exit(127);
         }
@@ -181,4 +200,19 @@ int Executor::exec_pl(const cppsh::Pipeline& pl) {
     }
 
     return last_status;
+}
+
+/**
+ * @brief Handles the execution for an external command.
+ * 
+ * The executor receives a Pipeline of commands, searches for the commands, 
+ * and if the command is found, forks a new process and executes the command via execvp().
+ * 
+ * @param pl The Pipeline of Commands input
+ * @return int Status code
+ */
+export std::expected<int, shell_error_t> exec(const pipeline_t& pl) {
+    if (pl.cmds.empty()) return 0;
+
+    return pl.cmds.size() == 1 ? exec_single(pl) : exec_pl(pl);
 }

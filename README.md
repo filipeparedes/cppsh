@@ -183,7 +183,7 @@ Error codes follow a structured range:
 - ✅ Pipes (|)
 - ✅ Background execution (&)
 - ✅ Migrate to C++23 Modules + DOD Architecture (unplanned)
-- Quotes and escape characters
+- ✅ Quotes and escape characters
 
 ### v0.4-beta
 - Environment variables support

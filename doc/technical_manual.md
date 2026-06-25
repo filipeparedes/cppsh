@@ -1,6 +1,6 @@
 # cppsh — Technical Manual
 
-> Version: v0.2-alpha — covers the second release of cppsh.
+> Version: v0.3-beta — covers the third release of cppsh.
 
 ## Table of Contents
 
@@ -8,292 +8,292 @@
 2. [Main Loop](#main-loop)
 3. [Parser](#parser)
 4. [Dispatcher](#dispatcher)
-5. [Executor](#executor)
+5. [Execution](#execution)
 6. [Signal Handling](#signal-handling)
 7. [Error Handling](#error-handling)
-8. [Command Registry Interface](#command-registry-interface)
-9. [Shell Context](#shell-context)
-10. [Built-in Commands](#built-in-commands)
-11. [Utility Library](#utility-library)
-12. [Tests](#tests)
+8. [Shell State](#shell-state)
+9. [Built-in Commands](#built-in-commands)
+10. [Utility Library](#utility-library)
+11. [Tests](#tests)
 
 ---
 
 ## Architecture Overview
 
-cppsh follows a layered architecture with clear separation of responsibilities:
+cppsh follows a procedural, data-oriented architecture built on C++23 modules. All components are free functions operating on plain data structs — no classes, no inheritance, no virtual dispatch.
 
 ```
-┌─────────────────────────────────────────────────┐
-│               Shell::run()                      │
-│    read input → parse → dispatch → execute      │
-└────────────┬──────────────┬─────────────────────┘
-             │              │
-     ┌───────┴──────┐  ┌────┴──────────┐
-     │ cppsh::Parser│  │  Dispatcher   │
-     │              │  │               │
-     │ tokenize()   │  │ dispatch()    │
-     │ parse()      │  │ get_entries() │
-     └──────────────┘  └──────┬────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              │                               │
-         builtin_cd                        Executor
-         builtin_help                    fork + execvp            
-         builtin_exit         
-         builtin_history              
-                        
+run()
+  ├── read_input()
+  ├── parse()                         — lib/parsing.cppm
+  │     ├── tokenize()                — char-by-char lexer
+  │     ├── is_bg()                   — detects &
+  │     ├── split()                   — splits on |
+  │     └── redirect_io()             — detects <, >, >>
+  │
+  └── dispatch()                      — src/dispatching.cppm
+        ├── help                      — handled inline
+        ├── builtin handler           — cd, exit, history
+        │     └── dup2 for I/O        — save → redirect → restore
+        └── exec()                    — src/execution.cppm
+              ├── exec_single()       — one fork + execvp
+              └── exec_pl()           — N forks + N-1 pipes
 ```
 
 **Data flow:**
 
-1. `Shell::run()` reads a line of input via `cppsh::read_input()`
-2. The input is recorded in `ShellContext::history`
-3. `cppsh::Parser::parse()` tokenizes the input into a `Command` struct
-4. `Dispatcher::dispatch()` looks up the command in its registry and calls the matching handler
-5. If no builtin matches, the `Executor` forks a child process and runs the command via `execvp`
-6. If the command is not found, a `ShellError` is thrown and caught in `Shell::run()`
+1. `run()` reads input via `read_input()`
+2. Input is recorded in `shell_state_t::history`
+3. `parse()` returns `std::expected<pipeline_t, std::string>`
+4. `dispatch()` checks builtins, then falls through to `exec()`
+5. `exec()` routes to `exec_single()` or `exec_pl()` based on pipeline size
+6. Errors propagate via `std::expected<int, shell_error_t>` — no exceptions
 
 ---
 
 ## Main Loop
 
-**File:** `src/shell.cpp`
+**Module:** `cppsh.shell` — `src/shell.cppm`
 
-### Class: `Shell`
+### `run()`
 
-The `Shell` class owns the main REPL (Read-Eval-Print Loop) and holds all top-level state.
+Main REPL loop. On each iteration:
 
-#### Members
-
-| Member | Type | Description |
-|---|---|---|
-| `m_user` | `std::string` | Current logged-in username |
-| `m_hostname` | `std::string` | Machine hostname |
-| `context` | `ShellContext` | Shell runtime state |
-| `parser` | `cppsh::Parser` | Command parser instance |
-| `dsptchr` | `Dispatcher` | Command dispatcher instance |
-
-#### `Shell()`
-
-Initializes the shell. Resolves the current username and hostname via `cppsh::get_username()` and `cppsh::get_hostname()`. Initializes `context` with a reference to `dispatcher` via initializer list. Registers signal handlers via `handle_signal()`.
-
-#### `run()`
-
-Main loop. On each iteration:
-- Prints the prompt via `print_prompt()`
-- Reads input via `cppsh::read_input()`
+- Prints the prompt via `print_prompt(user, hostname)`
+- Reads input via `read_input()`
 - Exits on EOF (`Ctrl+D`)
 - Skips blank lines
-- Records the input in `context.history`
-- Parses the input into a `Command` via `parser.parse()`
-- Dispatches the command via `dispatcher.dispatch()` inside a `try/catch` block
-- Catches `ShellError` and calls `e.print()`
+- Records input in `state.history`
+- Calls `parse(input)` — on error, calls `print(error)` and continues
+- Calls `dispatch(pl, state)` — on error, calls `print(error)`
 
-#### `print_prompt()`
+### `print_prompt(user, hostname)`
 
-Prints the prompt in the format `user@hostname:~/path$ `. The current working directory is resolved via `get_cwd()`, which substitutes the `$HOME` prefix with `~` for a cleaner display.
+Prints the prompt in the format `user@hostname:~/path$ `. Resolves the current working directory via `get_cwd()`, substituting `$HOME` with `~`.
 
 ---
 
 ## Parser
 
-**File:** `lib/parser.cpp`
+**Module:** `cppsh.parsing` — `lib/parsing.cppm`
 
-### Class: `cppsh::Parser`
+Returns `std::expected<pipeline_t, std::string>`. The pipeline is built through a sequence of transformation steps applied to the token vector.
 
-Responsible for turning a raw input string into a structured `Command`.
+### `tokenize(input)`
 
-#### `parse(const std::string& input)`
+Reads the input character by character. Handles:
 
-Delegates to `tokenize()` and wraps the result in a `Command` struct.
+- **Whitespace** — token boundary when not inside quotes
+- **Double quotes `"`** — preserves spaces, allows escape sequences inside
+- **Single quotes `'`** — preserves everything literally, no escape processing
+- **Backslash `\`** — escapes the next character (ignored inside single quotes)
+- **Unclosed quotes** — treated as open until EOF
 
-#### `tokenize(const std::string& input)`
-
-Uses a `std::stringstream` to split the input by whitespace into a vector of string tokens. Handles multiple consecutive spaces automatically — `ss >> token` skips whitespace between extractions.
+Uses a `Quote` enum (`None`, `Single`, `Double`) to track quoting state and an `is_escaped` flag for backslash handling.
 
 **Example:**
 
 ```
-Input:  "ls  -la  /tmp"
-Output: ["ls", "-la", "/tmp"]
+Input:  "echo hello\ world"
+Output: ["echo", "hello world"]
+
+Input:  "echo 'no $expand'"
+Output: ["echo", "no $expand"]
+```
+
+### `is_bg(tok_vec, pl)`
+
+Checks if the last token is `&`. If so, sets `pl.bg = true` and removes the token. Must run before `split()`.
+
+### `split(tok_vec, pl)`
+
+Iterates the token vector looking for `|`. Each segment between pipes becomes a `command_t` with `args` set to that segment. The remaining tokens after the last pipe become the final command.
+
+### `redirect_io(cmd)`
+
+Iterates `cmd.args` looking for `<`, `>`, `>>`. On match:
+
+- Sets the appropriate field on `cmd` (`input_file`, `output_file`, `append`)
+- Erases the operator and filename from `cmd.args`
+- Returns `std::unexpected(message)` if no filename follows the operator
+
+### `parse(input)`
+
+Orchestrates the pipeline:
+
+```cpp
+tokenize → is_bg → split → redirect_io (per command)
 ```
 
 ---
 
 ## Dispatcher
 
-**File:** `src/dispatcher.cpp`
+**Module:** `cppsh.dispatching` — `src/dispatching.cppm`
 
-### Class: `Dispatcher`
+### `dispatch(pl, state)`
 
-Implements `ICommandRegistry`. Holds the command dispatch table and routes incoming `Command` objects to the correct handler.
+Returns `std::expected<int, shell_error_t>`.
 
-#### `Dispatcher()`
+For single-command pipelines:
 
-Initializes the `entries` vector with all registered built-in commands:
+1. Checks for `help` / `-h` — calls `builtin_help(cmd, entries)` directly
+2. Iterates `entries` for a case-insensitive match on `cmd.args[0]`
+3. On match, applies I/O redirection via `dup2`, calls the handler, then restores file descriptors
+4. Falls through to `exec(pl)` if no builtin matches
+
+For multi-command pipelines, goes directly to `exec(pl)`.
+
+If `exec` returns `127`, returns `std::unexpected` with `error_code_t::COMMAND_NOT_FOUND`.
+
+### `entries`
+
+A `const std::vector<command_entry_t>` defined at module scope:
 
 ```cpp
-{"exit",    builtin_exit,    "Exit the shell"},
-{"cd",      builtin_cd,      "Change directory"},
-{"history", builtin_history, "List user's input history"},
-{"help",    builtin_help,    "List all built-in commands"},
+const std::vector<command_entry_t> entries = {
+    {"exit",    "Exit the shell",           "exit",        builtin_exit},
+    {"cd",      "Change directory",         "cd [dir]",    builtin_cd},
+    {"history", "List user's input history","history",     builtin_history},
+};
 ```
 
-#### `dispatch(const cppsh::Command& cmd, ShellContext& context)`
-
-Iterates `entries` and compares `cmd.args[0]` against each entry's `name` using `cppsh::iequals` for case-insensitive matching. On match, calls `entry.handler(cmd, context)` and returns its result.
-
-If no builtin matches, delegates to `executor.execute(cmd)`. If the executor returns `127` (command not found in `$PATH`), throws `ShellError(ShellErrorCode::COMMAND_NOT_FOUND)`.
-
-Returns `0` immediately if `cmd.args` is empty.
-
-#### `get_entries()`
-
-Returns a `const` reference to the internal `entries` vector. Used by `builtin_help` to list available commands.
+`help` is not in the table — handled inline before the loop.
 
 ---
 
-## Executor
+## Execution
 
-**File:** `src/executor.cpp`
+**Module:** `cppsh.execution` — `src/execution.cppm`
 
-### Class: `Executor`
+### `exec(pl)`
 
-Responsible for running external binaries — any command not matched by the dispatcher as a builtin.
+Routes based on pipeline size:
 
-#### `execute(const cppsh::Command& cmd)`
+- `pl.cmds.size() == 1` → `exec_single(pl)`
+- `pl.cmds.size() > 1` → `exec_pl(pl)`
 
-1. Calls `fork()` to create a child process
-2. On `fork` failure, throws `ShellError(ShellErrorCode::FORK_FAILED)`
-3. In the child process:
-   - Calls `setpgrp()` to place the child in its own process group, isolating signal delivery
-   - Resets `SIGINT` and `SIGTSTP` to `SIG_DFL` so the child responds normally to signals
-   - Converts `cmd.args` to `char**` via `cppsh::to_vchar()`
-   - Calls `execvp()` — the `p` variant searches `$PATH` automatically
-   - If `execvp` returns, it failed — calls `exit(127)` (Unix convention for command not found)
-4. In the parent process:
-   - Waits for the child via `waitpid(c_pid, &status, WUNTRACED)`
-   - `WUNTRACED` allows the parent to detect when the child is suspended (`Ctrl+Z`)
-   - Returns the appropriate exit code based on how the child terminated:
-     - `WIFEXITED` — returns `WEXITSTATUS(status)`
-     - `WIFSIGNALED` — returns `0` (killed by signal, not a shell error)
-     - `WIFSTOPPED` — returns `0` (suspended by `Ctrl+Z`)
+### `exec_single(pl)`
+
+Executes a single external command:
+
+1. `fork()` — creates a child process
+2. On `fork` failure — returns `std::unexpected(shell_error_t{FORK_FAILED})`
+3. Parent — if `pl.bg`, prints PID and returns immediately; otherwise `waitpid(WUNTRACED)`
+4. Child:
+   - `setpgrp()` — isolates the child in its own process group for signal handling
+   - Resets `SIGINT` and `SIGTSTP` to `SIG_DFL`
+   - Applies I/O redirection via `open()` + `dup2()`
+   - Calls `execvp()` — searches `$PATH` automatically
+   - On `execvp` failure — `exit(127)`
+
+### `exec_pl(pl)`
+
+Executes a pipeline of N commands with N-1 pipes:
+
+1. Creates N-1 pipes via `pipe()`
+2. Forks N children, one per command
+3. Each child:
+   - Connects `stdin` to the read end of the previous pipe (if not first)
+   - Connects `stdout` to the write end of the next pipe (if not last)
+   - Closes all pipe file descriptors after `dup2`
+   - Applies per-command I/O redirection
+   - Calls `execvp()`, exits with `127` on failure
+4. Parent closes all pipe ends
+5. Parent waits for all children — returns exit code of the last command
+
+Closing all pipe ends in both parent and children is essential to prevent deadlocks — processes waiting for EOF that never arrives.
 
 ---
 
 ## Signal Handling
 
-**File:** `src/signal_handling.cpp`
+**Module:** `cppsh.signal_handling` — `src/signal_handling.cppm`
 
 ### `handle_signal()`
 
-Registers signal handlers for `SIGINT` and `SIGTSTP` using `sigaction`. Called once in `Shell::Shell()`.
+Registers handlers for `SIGINT` and `SIGTSTP` via `sigaction`. Called once at startup in `run()`.
 
-### `handle_sigint(int signum)`
+### `handle_sigint(signum)`
 
-Called when `Ctrl+C` is pressed. The parent shell ignores `SIGINT` via `signal(SIGINT, SIG_IGN)`. The child process, having reset to `SIG_DFL` before `execvp`, is terminated normally.
+Parent shell ignores `SIGINT`. The child process, having reset to `SIG_DFL` in `exec_single` or `exec_pl`, is terminated. The `\r\033[K` escape sequence clears the `^C` from the terminal line.
 
-### `handle_sigtstp(int signum)`
+### `handle_sigtstp(signum)`
 
-Called when `Ctrl+Z` is pressed. The parent shell ignores `SIGTSTP` via `signal(SIGTSTP, SIG_IGN)`. The child process, isolated in its own process group via `setpgrp()`, is suspended normally.
+Parent shell ignores `SIGTSTP`. The child process, isolated via `setpgrp()`, is suspended. The `\r\033[K` escape sequence clears the `^Z` from the terminal line.
 
-> **Note:** Run the shell directly via `./build/cppsh` rather than `make run`. Running through `make` adds an extra process layer that interferes with process group isolation and signal delivery.
+> Run the shell via `./build/cppsh` directly. Running through an intermediary process (e.g. `make run`) adds a process group layer that interferes with signal delivery.
 
 ---
 
 ## Error Handling
 
-**Files:** `src/errors/error_codes.hpp`, `src/errors/shell_error.hpp`, `src/errors/shell_error.cpp`
+**Module:** `cppsh.shell_errors` — `src/shell_errors.cppm`
 
-### Error Code Ranges
+cppsh uses `std::expected` throughout — no exceptions. Every function that can fail returns `std::expected<int, shell_error_t>`.
 
-| Range | Category |
-|---|---|
-| `0x0000` – `0x00FF` | User errors |
-| `0x0100` – `0xFFFF` | System errors |
-
-### `ShellErrorCode`
+### `error_code_t`
 
 ```cpp
-enum class ShellErrorCode : int {
-    // User errors
-    COMMAND_NOT_FOUND = 0x0001,
-    INVALID_PATH      = 0x0002,
-    INVALID_ARGS      = 0x0003,
+enum class error_code_t : int {
+    // User errors (0x0000 – 0x00FF)
+    COMMAND_NOT_FOUND           = 0x0000,
+    INVALID_PATH                = 0x0001,
+    INVALID_ARGS                = 0x0002,
+    MISSING_REDIRECTION_TARGET  = 0x0003,
 
-    // System errors
-    FORK_FAILED       = 0x0100,
-    EXECVP_FAILED     = 0x0101,
+    // System errors (0x0100 – 0xFFFF)
+    FORK_FAILED     = 0x0100,
+    EXECVP_FAILED   = 0x0101,
 };
 ```
 
-### Class: `ShellError`
+### `shell_error_t`
 
-Wraps a `ShellErrorCode` with optional context — the command name, the invalid argument, and the correct usage string. Thrown at the point of failure and caught in `Shell::run()`.
+Plain data struct:
 
-#### Members (private)
-
-| Member | Type | Description |
+| Field | Type | Description |
 |---|---|---|
-| `code` | `ShellErrorCode` | Error code |
+| `code` | `error_code_t` | Error code |
 | `cmd` | `std::string` | Command that caused the error |
-| `arg` | `std::string` | Invalid argument passed to the command |
-| `usage` | `std::string` | Correct usage of the command |
+| `arg` | `std::string` | Invalid argument |
+| `usage` | `std::string` | Correct usage string |
 
-#### `print()`
+### `is_system_error(error)`
 
-Determines the output format based on `is_system_error()`:
+Returns `true` if `static_cast<int>(error.code) >= 0x0100`.
+
+### `print(error)`
+
+Formats and prints the error to `stderr`:
 
 **User error:**
 ```
-cppsh: 'cd': invalid path '/naoexiste'
+cd: /naoexiste: No such directory
 ```
 
 **System error:**
 ```
-cppsh: error[0x0100]: 
-  --> os error: 12 (cannot allocate memory)
+error[0x0100]: os error: 12 (cannot allocate memory)
 ```
 
-#### `is_system_error()` (private)
-
-Returns `true` if `static_cast<int>(code) >= 0x0100`.
+Uses `{:04x}` format specifier for zero-padded 4-digit hex codes.
 
 ---
 
-## Command Registry Interface
+## Shell State
 
-**File:** `src/include/icommand_registry.hpp`
+**Module:** `cppsh.shell_state` — `src/shell_state.cppm`
 
-### Class: `ICommandRegistry`
+### `shell_state_t`
 
-Abstract interface that defines the contract for any command registry. Decouples `ShellContext` from the concrete `Dispatcher` implementation, following the Dependency Inversion principle.
-
-#### `get_entries()`
-
-Pure virtual method. Returns a `const` reference to the list of `CommandEntry` objects.
-
-#### `~ICommandRegistry()`
-
-Virtual destructor — required to ensure correct destruction of derived classes when accessed through a base class pointer.
-
----
-
-## Shell Context
-
-**File:** `src/include/context.hpp`
-
-### Struct: `ShellContext`
-
-Holds the runtime state of the shell. Passed by reference to all command handlers.
-
-#### Fields
+Plain data struct holding the shell's runtime state:
 
 | Field | Type | Description |
 |---|---|---|
-| `history` | `std::vector<std::string>` | List of commands executed during the session |
-| `registry` | `ICommandRegistry&` | Reference to the command registry (used by `help`) |
+| `history` | `std::vector<std::string>` | Commands executed during the session |
+
+Passed by reference to builtin handlers that need access to session state.
 
 ---
 
@@ -301,65 +301,61 @@ Holds the runtime state of the shell. Passed by reference to all command handler
 
 **Directory:** `src/commands/builtins/`
 
-All built-in commands share the same handler signature:
+All builtins share the handler signature defined in `command_entry_t`:
 
 ```cpp
-int handler(const cppsh::Command& command, ShellContext& context);
+using command_handler_t = std::expected<int, shell_error_t>(*)(const command_t&, shell_state_t&);
 ```
-
-Returns `0` on success, throws `ShellError` on error.
 
 ### `builtin_exit`
 
-Calls `exit(0)`. Does not return.
+Prints `"Exiting program..."` and calls `exit(0)`.
 
 ### `builtin_cd`
 
 Changes the current working directory using `chdir()`.
 
-- With no arguments — changes to `$HOME`, falling back to `/` if `HOME` is not set
+- With no arguments — changes to `$HOME`, falling back to `/`
 - With a path argument — changes to the specified path
-- On failure — throws `ShellError(ShellErrorCode::INVALID_PATH, "cd", path)`
+- On failure — returns `std::unexpected(shell_error_t{INVALID_PATH, "cd", path})`
 
 ### `builtin_history`
 
-Iterates `context.history` and prints each entry with a 1-based index.
+Iterates `state.history` and prints each entry with a 1-based index using `std::println`.
 
 ### `builtin_help`
 
-Iterates `context.registry.get_entries()` and prints each command's name and description with a 1-based index.
+Receives `std::span<const command_entry_t>` — passed directly by the dispatcher. Prints each entry's name and description with a 1-based index. Not registered in the entries table — called inline in `dispatch()`.
 
 ---
 
 ## Utility Library
 
-**File:** `lib/utils.cpp`
-
-All utilities live in the `cppsh` namespace.
+**Module:** `cppsh.utils` — `lib/utils.cppm`
 
 ### `get_username()`
 
-Calls `getpwuid(getuid())` to retrieve the current user's username. Falls back to `"user"` on failure.
+Calls `getpwuid(getuid())` to retrieve the current username. Falls back to `"user"`.
 
 ### `get_hostname()`
 
-Calls `gethostname()` to retrieve the machine hostname. Falls back to `"localhost"` on failure.
+Calls `gethostname()` to retrieve the machine hostname. Falls back to `"localhost"`.
 
 ### `get_cwd()`
 
-Calls `getcwd()` to retrieve the current working directory. Substitutes the `$HOME` prefix with `~`. Returns `"?"` on failure.
+Calls `getcwd()` to retrieve the current working directory. Substitutes `$HOME` with `~`. Returns `"?"` on failure.
 
 ### `read_input()`
 
-Reads a line from `stdin` using `std::getline`. Returns an empty string on EOF.
+Reads a line from `stdin` via `std::getline`. Returns an empty string on EOF.
 
-### `iequals(const std::string& a, const std::string& b)`
+### `iequals(a, b)`
 
-Case-insensitive string comparison. Uses `std::equal` with a lambda that applies `std::tolower` (via `static_cast<unsigned char>`) to each character pair. Short-circuits on size mismatch.
+Case-insensitive string comparison using `std::equal` with a lambda applying `std::tolower` via `static_cast<unsigned char>`. Short-circuits on size mismatch.
 
-### `to_vchar(const std::vector<std::string>& v)`
+### `to_vchar(v)`
 
-Converts a `std::vector<std::string>` to a `std::vector<char*>` terminated with `nullptr`, suitable for passing to `execvp`. Uses `const_cast<char*>` since `execvp` expects `char**` but does not modify the strings.
+Converts `std::vector<std::string>` to `std::vector<char*>` terminated with `nullptr`, for passing to `execvp`. Uses `const_cast<char*>` since `execvp` expects `char**` but does not modify the strings.
 
 ---
 
@@ -367,42 +363,48 @@ Converts a `std::vector<std::string>` to a `std::vector<char*>` terminated with 
 
 **Directory:** `tests/`
 
-The test suite uses Google Test. Run with:
+The test suite uses Google Test with C++23 module imports.
 
 ```bash
-make test
+cd build && ninja && ./tests
 ```
 
 ### `parser_test.cpp`
 
 | Test | Description |
 |---|---|
-| Simple command | `"ls"` → `args = ["ls"]` |
-| Command with arguments | `"ls -la /home"` → `args = ["ls", "-la", "/home"]` |
-| Multiple spaces | `"ls  -la"` → `args = ["ls", "-la"]` |
-| Blank input | `"   "` → `args = []` |
+| `SimpleCommand` | `"ls"` → 1 command, 1 arg |
+| `CommandWithArguments` | `"ls -la /home"` → 3 args |
+| `MultipleSpaces` | `"ls  -la"` → 2 args |
+| `OnlySpaces` | `"   "` → empty pipeline |
+| `InputRedirection` | `"sort < input.txt"` → `input_file = "input.txt"` |
+| `OutputRedirection` | `"echo > output.txt"` → `output_file = "output.txt"`, `append = false` |
+| `AppendRedirection` | `"echo >> output.txt"` → `append = true` |
+| `IORedirection` | `"sort < input.txt > output.txt"` → both fields set |
+| `InputRedirectionBeforeCommand` | `"< input.txt sort"` → correct |
+| `BackgroundFlag` | `"sleep 10 &"` → `pl.bg = true` |
+| `MissingInputFile` | `"sort <"` → `std::unexpected` |
+| `MissingOutputFile` | `"echo >"` → `std::unexpected` |
+
+### `pipe_test.cpp`
+
+| Test | Description |
+|---|---|
+| `SimpleTwoStagePipe` | `"ls \| grep"` → 2 commands |
+| `PipeWithArguments` | `"ls -la \| grep txt"` → args preserved per command |
+| `MultiplePipesChain` | `"cat \| grep \| wc -l"` → 3 commands |
+| `PipeWithExcessiveSpaces` | Multiple spaces handled correctly |
+| `PipeMixedWithIORedirection` | Per-command I/O with pipes |
 
 ### `dispatcher_test.cpp`
 
 | Test | Description |
 |---|---|
-| `UnknownCommandThrows` | Unknown command throws `ShellError` |
-| `EmptyCommandReturnsZero` | Empty `args` returns `0` |
-| `CdNoArgsReturnsZero` | `cd` with no arguments returns `0` |
+| `EmptyCommandReturnsZero` | Empty pipeline returns `0` |
+| `UnknownCommandReturnsError` | Returns `std::unexpected` with `COMMAND_NOT_FOUND` |
+| `CdInvalidPathReturnsError` | Returns `std::unexpected` with `INVALID_PATH` |
 | `CdValidPathReturnsZero` | `cd /tmp` returns `0` |
-| `CdInvalidPathThrows` | Invalid path throws `ShellError` |
-| `HistoryEmptyReturnsZero` | `history` with empty history returns `0` |
+| `HistoryEmptyReturnsZero` | `history` with empty state returns `0` |
 | `HistoryWithEntriesReturnsZero` | `history` with entries returns `0` |
 | `HelpReturnsZero` | `help` returns `0` |
-| `HelpIReturnsZero` | `heLP` returns `0` (case-insensitive) |
-| `GetEntriesNotEmpty` | Registry is not empty on initialization |
-| `GetEntriesContainsBuiltins` | Registry contains `cd`, `exit`, `help`, `history` |
-
-### `error_test.cpp`
-
-| Test | Description |
-|---|---|
-| `InvalidPathThrows` | `INVALID_PATH` throws `ShellError` |
-| `CommandNotFoundThrows` | `COMMAND_NOT_FOUND` throws `ShellError` |
-| `ForkFailedThrows` | `FORK_FAILED` throws `ShellError` |
-| `NoThrowOnSuccess` | Constructing `ShellError` does not throw |
+| `HelpCaseInsensitiveReturnsZero` | `heLP` returns `0` |

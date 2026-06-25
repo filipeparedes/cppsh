@@ -1,6 +1,6 @@
 # cppsh
 
-A Unix shell implementation in C++ supporting built-in commands, command dispatching and an extensible command registry — built from scratch with raw system calls.
+A Unix shell implementation in C++23 supporting built-in commands, pipelines, I/O redirection, and external binary execution — built from scratch with raw system calls and C++23 modules.
 
 > Developed as a personal project to deepen knowledge of systems programming, C++ and Unix internals.
 
@@ -9,25 +9,31 @@ A Unix shell implementation in C++ supporting built-in commands, command dispatc
 ## Features
 
 - **Interactive prompt** — displays `user@hostname:~/path$` with home directory substitution
-- **Command dispatcher** — extensible, table-driven dispatch system with case-insensitive matching
+- **Command dispatcher** — table-driven dispatch system with case-insensitive matching
 - **Built-in commands** — `cd`, `exit`, `help`, `history`
 - **External binary execution** — runs any binary in `$PATH` via `fork` + `execvp`
+- **Pipelines** — connects commands via `|`, supporting chains of arbitrary length
+- **I/O Redirection** — `>`, `>>`, `<` with per-command redirection in pipelines
+- **Background execution** — runs commands in the background with `&`
+- **Quotes and escape characters** — single/double quotes and `\` escape support
 - **Signal handling** — `Ctrl+C` terminates the running command, `Ctrl+Z` suspends it
-- **Robust error handling** — structured error system with hex error codes for system errors
+- **Robust error handling** — `std::expected`-based error system with hex error codes for system errors
 - **Command history** — tracks all executed commands during the session
 - **Graceful EOF handling** — exits cleanly on `Ctrl+D`
-- **Unit tested** — parser, dispatcher and error handling covered with Google Test
+- **Unit tested** — parser, dispatcher and pipeline covered with Google Test
 
 ---
 
 ## Requirements
 
-- C++17 or later
-- CMake 3.20+
+- C++23 or later
+- CMake 3.28+
+- Ninja
+- LLVM clang++
 - Google Test (for tests only)
 
 ```bash
-brew install cmake googletest  # macOS
+brew install llvm cmake ninja googletest  # macOS
 ```
 
 ---
@@ -37,28 +43,23 @@ brew install cmake googletest  # macOS
 ```bash
 git clone https://github.com/filipeparedes/cppsh.git
 cd cppsh
-make
+mkdir build && cd build
+cmake .. -G Ninja
+ninja
 ```
 
 ### Run the shell
 
 ```bash
-make
 ./build/cppsh
 ```
 
-> Run directly instead of `make run` to ensure signal handling works correctly.
+> Run directly rather than through `make` to ensure signal handling works correctly.
 
 ### Run tests
 
 ```bash
-make test
-```
-
-### Clean build
-
-```bash
-make clean
+cd build && ninja && ./tests
 ```
 
 ---
@@ -79,44 +80,30 @@ make clean
 ```
 cppsh/
 ├── src/
-│   ├── include/                    # Internal shared headers
-│   │   ├── context.hpp             # ShellContext — shell runtime state
-│   │   ├── dispatcher.hpp          # Command dispatcher
-│   │   ├── executor.hpp            # External binary executor
-│   │   ├── shell.hpp               # Main shell loop
-│   │   └── icommand_registry.hpp   # ICommandRegistry interface
 │   ├── commands/
-│   │   ├── builtins/               # Built-in command implementations
-│   │   │   ├── include/            # Built-in headers
-│   │   │   ├── cd.cpp
-│   │   │   ├── exit.cpp
-│   │   │   ├── help.cpp
-│   │   │   └── history.cpp
-│   │   ├── entry.hpp               # CommandEntry — dispatch table entry
-│   │   └── commands.hpp            # Centralized builtin includes
-│   ├── errors/
-│   │   ├── error_codes.hpp         # ShellErrorCode — hex error codes
-│   │   ├── shell_error.hpp         # ShellError — structured error class
-│   │   └── shell_error.cpp
-│   ├── dispatcher.cpp
-│   ├── executor.cpp
-│   ├── signal_handling.cpp         # SIGINT and SIGTSTP handlers
-│   ├── shell.cpp
+│   │   ├── builtins/
+│   │   │   ├── cd.cppm
+│   │   │   ├── exit.cppm
+│   │   │   ├── help.cppm
+│   │   │   └── history.cppm
+│   │   └── command_entry.cppm      # command_entry_t — dispatch table entry
+│   ├── dispatching.cppm            # dispatch() — routes Pipeline to handler
+│   ├── execution.cppm              # exec(), exec_single(), exec_pl()
+│   ├── shell_errors.cppm           # error_code_t, shell_error_t, print()
+│   ├── shell_state.cppm            # shell_state_t — shell runtime state
+│   ├── shell.cppm                  # run(), print_prompt()
+│   ├── signal_handling.cppm        # handle_signal(), SIGINT, SIGTSTP
 │   └── main.cpp                    # Entry point
-├── include/                        # Public headers
-│   ├── parser.hpp                  # Input parser
-│   ├── utils.hpp                   # Utility functions
-│   └── command.hpp                 # Command struct
-├── lib/                            # Public implementations
-│   ├── parser.cpp
-│   └── utils.cpp
+├── lib/
+│   ├── command.cppm                # command_t struct
+│   ├── pipeline.cppm               # pipeline_t struct
+│   ├── parsing.cppm                # parse(), tokenize(), redirect_io(), split()
+│   └── utils.cppm                  # get_username(), get_hostname(), get_cwd(), iequals()
 ├── tests/
 │   ├── parser_test.cpp
 │   ├── dispatcher_test.cpp
-│   └── error_test.cpp
-├── docs/
+│   └── pipe_test.cpp
 ├── CMakeLists.txt
-├── Makefile
 └── README.md
 ```
 
@@ -124,30 +111,34 @@ cppsh/
 
 ## Architecture
 
-cppsh follows a clean separation of concerns:
-
 ```
-main.cpp
-  └── Shell::run()
-        ├── cppsh::read_input()       # reads user input
-        ├── cppsh::Parser::parse()    # tokenizes input into Command
-        └── Dispatcher::dispatch()    # routes Command to handler
-              ├── builtin handler     # cd, exit, help, history
-              └── Executor            # fork + execvp for external binaries
-                    └── ShellError    # structured error reporting
+run()
+  ├── read_input()
+  ├── parse()
+  │     ├── tokenize()       — char-by-char, handles quotes and escape characters
+  │     ├── is_bg()          — detects &, sets pipeline_t::bg
+  │     ├── split()          — splits on |, builds vector<command_t>
+  │     └── redirect_io()    — detects <, >, >>, sets command_t fields
+  │
+  └── dispatch()
+        ├── help             — handled directly in dispatcher
+        ├── builtin handler  — cd, exit, history
+        │     └── I/O redirection via dup2 (save → redirect → restore)
+        └── exec()
+              ├── exec_single()   — fork + execvp + I/O redirection
+              └── exec_pl()       — N forks + N-1 pipes + execvp
 ```
-
-The `Dispatcher` implements `ICommandRegistry`, allowing `ShellContext` to access the command registry without depending on a concrete implementation — following the Dependency Inversion principle.
 
 ---
 
 ## Error Handling
 
-cppsh distinguishes between two categories of errors:
+cppsh uses `std::expected` throughout — no exceptions. Functions that can fail return `std::expected<int, shell_error_t>`.
 
 **User errors** — plain language messages:
 ```
-cd: /naoexiste: no such directory
+cd: /naoexiste: No such directory
+ls: Unknown command
 ```
 
 **System errors** — hex error codes with OS context:
@@ -172,18 +163,18 @@ Error codes follow a structured range:
 - ✅ Command history
 - ✅ Interactive prompt
 
-### v0.2-alpha (current)
+### v0.2-alpha
 - ✅ Execute external binaries (fork + execvp)
 - ✅ Signal handling (Ctrl+C, Ctrl+Z)
 - ✅ Case-insensitive command dispatching
 - ✅ Robust error handling system
 
-### v0.3-beta (WIP)
+### v0.3-beta (current)
 - ✅ I/O Redirection (>, >>, <)
 - ✅ Pipes (|)
 - ✅ Background execution (&)
-- ✅ Migrate to C++23 Modules + DOD Architecture (unplanned)
 - ✅ Quotes and escape characters
+- ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
 ### v0.4-beta
 - Environment variables support

@@ -176,7 +176,7 @@ Error codes follow a structured range:
 - ✅ Quotes and escape characters
 - ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
-### v0.4-beta
+### v0.4-beta (WIP)
 - Environment variables support
 - Built-in echo with variable expansion
 - Logical operators (&&, ||)

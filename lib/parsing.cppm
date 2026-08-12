@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-06-24
  * 
  * @copyright Copyright (c) 2026
@@ -13,7 +13,6 @@ module;
 */
 
 #include <cctype>
-#include <sstream>
 #include <vector>
 #include <string>
 #include <expected>
@@ -193,6 +192,31 @@ void is_bg(std::vector<std::string>& tok_vec, pipeline_t& pl) {
     }
 }
 
+std::expected<bool, std::string> is_assignment(const command_t& cmd) {
+    if (cmd.args.empty()) return false;
+
+    const std::string& arg = cmd.args[0];
+    size_t eq_pos = arg.find('=');
+
+    //NO '=' means not assignment => regular command
+    if (eq_pos == std::string::npos) return false;
+
+    //Has '=' => assignment
+    std::string key = arg.substr(0, eq_pos);
+
+    if (key.empty() || (!std::isalpha(key[0]) && key[0] != '_')) {
+        return std::unexpected("var name must start with a letter or underscore");
+    }
+
+    for (char c : key) {
+        if (!std::isalnum(c) && c != '_') {
+            return std::unexpected("var name must be alphanumeric");
+        }
+    }
+
+    return true;
+}
+
 /**
  * @brief Parses a raw input line into a Pipeline.
  * 
@@ -208,6 +232,10 @@ export std::expected<pipeline_t, std::string> parse(const std::string& input) {
     split(tok_vec, pl);
 
     for(command_t& cmd : pl.cmds) {
+        if (is_assignment(cmd)){
+            cmd.type = command_type_t::assignment;
+        }
+
         std::expected<void, std::string> res = redirect_io(cmd);
         if (!res) return std::unexpected(res.error());   
     }

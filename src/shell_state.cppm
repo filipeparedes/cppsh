@@ -17,6 +17,9 @@ module;
 
 #include <vector>
 #include <string>
+#include <unordered_map>
+
+import cppsh.env_entry;
 
 export module cppsh.shell_state;
 
@@ -27,6 +30,6 @@ export module cppsh.shell_state;
  * or modify shell state.
  */
 export struct shell_state_t {
-    std::vector<std::string> history;           // List of commands executed during the session
-    //TODO: env variables
+    std::vector<std::string> history;   // List of commands executed during the session
+    std::unordered_map<std::string, env_entry_t> env_variables; // Map of the environment variables
 };

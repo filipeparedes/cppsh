@@ -27,6 +27,7 @@ target_sources(cppsh
         src/execution.cppm
         src/shell_errors.cppm
         src/shell_state.cppm
+        src/env_entry.cppm
         src/shell.cppm
         src/signal_handling.cppm
 )

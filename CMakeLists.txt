@@ -9,11 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-add_executable(cppsh src/main.cpp)
+# static lib with all modules
+add_library(cppsh_lib STATIC)
 
-target_sources(cppsh
+target_sources(cppsh_lib
     PUBLIC
     FILE_SET CXX_MODULES FILES
+        src/env_entry.cppm
         lib/command.cppm
         lib/pipeline.cppm
         lib/parsing.cppm
@@ -27,10 +29,12 @@ target_sources(cppsh
         src/execution.cppm
         src/shell_errors.cppm
         src/shell_state.cppm
-        src/env_entry.cppm
         src/shell.cppm
         src/signal_handling.cppm
 )
+
+add_executable(cppsh src/main.cpp)
+target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib 
 
 find_package(GTest REQUIRED)
 
@@ -39,24 +43,4 @@ add_executable(tests
     tests/dispatcher_test.cpp
     tests/pipe_test.cpp
 )
-
-target_sources(tests
-    PUBLIC
-    FILE_SET CXX_MODULES FILES
-        lib/command.cppm
-        lib/pipeline.cppm
-        lib/parsing.cppm
-        lib/utils.cppm
-        src/commands/command_entry.cppm
-        src/commands/builtins/cd.cppm
-        src/commands/builtins/exit.cppm
-        src/commands/builtins/help.cppm
-        src/commands/builtins/history.cppm
-        src/dispatching.cppm
-        src/execution.cppm
-        src/shell_errors.cppm
-        src/shell_state.cppm
-        src/signal_handling.cppm
-)
-
-target_link_libraries(tests PRIVATE GTest::gtest_main)
+target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest

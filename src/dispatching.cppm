@@ -15,12 +15,14 @@ module;
 #include <unistd.h>
 #include <vector>
 #include <expected>
+#include <string>
 
 export module cppsh.dispatching;
 
 import cppsh.shell_errors;
 import cppsh.shell_state;
 import cppsh.command_entry;
+import cppsh.env_entry;
 import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
@@ -49,6 +51,17 @@ export std::expected<int, shell_error_t> dispatch(const pipeline_t& pl, shell_st
     //If there is only one entry, check built ins
     if (pl.cmds.size() == 1) {
         cmd = pl.cmds[0];
+
+        //handle assignment
+        if (pl.cmds.size() == 1 && pl.cmds[0].type == command_type_t::assignment) {
+            const std::string& arg = pl.cmds[0].args[0];
+            size_t eq_pos = arg.find('=');
+            std::string key = arg.substr(0, eq_pos);
+            std::string value = arg.substr(eq_pos + 1);
+
+            state.env_variables[key] = env_entry_t{value, false};
+            return 0;
+        }
 
         //Handle help cmd separately
         if (iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h")) {

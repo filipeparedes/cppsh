@@ -15,7 +15,7 @@ add_library(cppsh_lib STATIC)
 target_sources(cppsh_lib
     PUBLIC
     FILE_SET CXX_MODULES FILES
-        src/env_entry.cppm
+        lib/env_entry.cppm
         lib/command.cppm
         lib/pipeline.cppm
         lib/parsing.cppm

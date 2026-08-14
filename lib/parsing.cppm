@@ -5,14 +5,15 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.3.0
- * @date 2026-06-24
+ * @version 1.5.0
+ * @date 2026-08-14
  * 
  * @copyright Copyright (c) 2026
  * 
 */
 
 #include <cctype>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <expected>
@@ -21,6 +22,7 @@ export module cppsh.parsing;
 
 import cppsh.pipeline;
 import cppsh.command;
+import cppsh.env_entry;
 
 enum class Quote {
     None,
@@ -36,16 +38,21 @@ enum class Quote {
  *    Unclosed quotes '"' or "'" will treat everything as a literal until EOF
  * 
  * @param input The raw input string.
+ * @param env_vars An unordered map of the environment variables
+ *
  * @return A vector of string tokens.
  */
-std::vector<std::string> tokenize(const std::string& input) {
+std::vector<std::string> tokenize(const std::string& input, const std::unordered_map<std::string, env_entry_t>& env_vars) {
     std::vector<std::string> tokens;
     bool is_escaped = false;
     Quote quote = Quote::None;
-
     std::string current;
+
     //loop the string char by char
-    for (char c : input){
+    for (size_t i=0; i<input.size(); ++i){
+        char c = input[i];
+
+        //quotes & escape characters handling
         if (is_escaped) {
             current += c;
             is_escaped = false;
@@ -72,6 +79,31 @@ std::vector<std::string> tokenize(const std::string& input) {
             continue;
         }
         
+        //var expansion: only if quotes not single ('')
+        if (c == '$' && quote != Quote::Single) {
+            std::string var_name;
+            size_t next_i = i+1; //start reading after $
+
+            //only valid chars for POSIX identifiers
+            //e.g "$DRV_A/docs" -> stops immediately at '/'
+            while (next_i < input.size() && (std::isalnum(static_cast<unsigned char>(input[next_i])) || input[next_i] == '_')) {
+                var_name += input[next_i];
+                next_i++;
+            }
+
+            //found a valid name after '$'
+            if (!var_name.empty()) {
+                auto it = env_vars.find(var_name);
+                if (it != env_vars.end()) {
+                    current += it->second.value; //get respective value
+                }
+                //continue main loop until end of var name
+                i = next_i-1;
+                continue;
+            }
+            //treat isolated $ as literal
+        }
+
         if(std::isspace(static_cast<unsigned char>(c)) && quote == Quote::None){
             //ignore empty tokens, like ""
             if(!current.empty()){
@@ -192,6 +224,14 @@ void is_bg(std::vector<std::string>& tok_vec, pipeline_t& pl) {
     }
 }
 
+/**
+ * @brief Checks for assignment type command
+ * 
+ * @param cmd The command to analyze
+ *
+ * @return expected: true if is assignment, false it if isn't
+ * @return unexpected: string with error message
+ */
 std::expected<bool, std::string> is_assignment(const command_t& cmd) {
     if (cmd.args.empty()) return false;
 
@@ -221,11 +261,15 @@ std::expected<bool, std::string> is_assignment(const command_t& cmd) {
  * @brief Parses a raw input line into a Pipeline.
  * 
  * @param input The raw input string from the user.
+ * @param env_vars An unordered map of the environment variables
+ *
  * @return expected: A Pipeline struct with populated Commands.
  * @return unexpected: A string with the error message
  */
-export std::expected<pipeline_t, std::string> parse(const std::string& input) {
-    std::vector<std::string> tok_vec = tokenize(input);
+export std::expected<pipeline_t, std::string> parse(const std::string& input,
+                                                    const std::unordered_map<std::string, env_entry_t>& env_vars) {
+
+    std::vector<std::string> tok_vec = tokenize(input, env_vars);
     pipeline_t pl;
 
     is_bg(tok_vec, pl);

@@ -78,7 +78,7 @@ export std::expected<void, shell_error_t> run() {
         state.history.push_back(input);
 
         //Parse input into Command-type obj
-        std::expected<pipeline_t, std::string> par = parse(input);
+        std::expected<pipeline_t, std::string> par = parse(input, state.env_variables);
         if (!par) {
             print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});
             continue;

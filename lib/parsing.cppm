@@ -276,12 +276,12 @@ export std::expected<pipeline_t, std::string> parse(const std::string& input,
     split(tok_vec, pl);
 
     for(command_t& cmd : pl.cmds) {
-        if (is_assignment(cmd)){
-            cmd.type = command_type_t::assignment;
-        }
+        std::expected<bool, std::string> assign_res = is_assignment(cmd);
+        if (!assign_res) return std::unexpected(assign_res.error());
+        if (assign_res.value()) cmd.type = command_type_t::assignment;
 
-        std::expected<void, std::string> res = redirect_io(cmd);
-        if (!res) return std::unexpected(res.error());   
+        std::expected<void, std::string> redi_res = redirect_io(cmd);
+        if (!redi_res) return std::unexpected(redi_res.error());   
     }
     return pl;
 }

@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.5.0
- * @date 2026-08-14
+ * @version 1.6.0
+ * @date 2026-08-15
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -31,6 +31,37 @@ enum class Quote {
 };
 
 /**
+ * @brief Expands a POSIX environment variable into its value.
+ * 
+ * @param input The raw input line.
+ * @param i Current index in the input (pointing at '$'). Updated to the last char of the var name
+ * @param env_vars Map containing environment variables.
+ *
+ * @return The expanded value, or an empty string if variable is not set.
+ */
+std::string expand_variable(const std::string& input, size_t& i,
+                            const std::unordered_map<std::string, env_entry_t>& env_vars) {
+    std::string var_name;
+    size_t next_i = i+1; //start reading after $
+
+    //only valid chars for POSIX identifiers
+    //e.g "$DRV_A/docs" -> stops immediately at '/'
+    while (next_i < input.size() && (std::isalnum(static_cast<unsigned char>(input[next_i])) || input[next_i] == '_')) {
+        var_name += input[next_i];
+        next_i++;
+    }
+
+    //handle isolated $ as a literal
+    if (var_name.empty()) return "";
+
+    //advance caller index to the end of the variable name
+    i = next_i-1;
+    
+    auto it = env_vars.find(var_name);
+    return (it != env_vars.end()) ? it->second.value : "";
+}
+
+/**
  * @brief Splits the input string into tokens.
  *    Accounts for quotes, and escape characters.
  *    Reads the input char by char.
@@ -42,7 +73,8 @@ enum class Quote {
  *
  * @return A vector of string tokens.
  */
-std::vector<std::string> tokenize(const std::string& input, const std::unordered_map<std::string, env_entry_t>& env_vars) {
+std::vector<std::string> tokenize(const std::string& input, 
+                                const std::unordered_map<std::string, env_entry_t>& env_vars) {
     std::vector<std::string> tokens;
     bool is_escaped = false;
     Quote quote = Quote::None;
@@ -52,7 +84,7 @@ std::vector<std::string> tokenize(const std::string& input, const std::unordered
     for (size_t i=0; i<input.size(); ++i){
         char c = input[i];
 
-        //quotes & escape characters handling
+        //Escaped characters
         if (is_escaped) {
             current += c;
             is_escaped = false;
@@ -62,52 +94,33 @@ std::vector<std::string> tokenize(const std::string& input, const std::unordered
             is_escaped = true;
             continue;
         }
-        if (c == '"' && quote == Quote::None) {
-            quote = Quote::Double;
+
+        //Quote state toggle
+        if (c == '"' && quote != Quote::Single){
+            quote = (quote == Quote::Double) ? Quote::None : Quote::Double;
             continue;
         }
-        if (c == '"' && quote == Quote::Double) {
-            quote = Quote::None;
-            continue;
-        }
-        if (c == '\'' && quote == Quote::None) {
-            quote = Quote::Single;
-            continue;
-        }
-        if (c == '\'' && quote == Quote::Single) {
-            quote = Quote::None;
+        if (c == '\'' && quote != Quote::Double) {
+            quote = (quote == Quote::Single) ? Quote::None : Quote::Single;
             continue;
         }
         
-        //var expansion: only if quotes not single ('')
+        //Variable expansion ($VAR)
+        //only if quotes not single ('')
         if (c == '$' && quote != Quote::Single) {
-            std::string var_name;
-            size_t next_i = i+1; //start reading after $
-
-            //only valid chars for POSIX identifiers
-            //e.g "$DRV_A/docs" -> stops immediately at '/'
-            while (next_i < input.size() && (std::isalnum(static_cast<unsigned char>(input[next_i])) || input[next_i] == '_')) {
-                var_name += input[next_i];
-                next_i++;
-            }
-
-            //found a valid name after '$'
-            if (!var_name.empty()) {
-                auto it = env_vars.find(var_name);
-                if (it != env_vars.end()) {
-                    current += it->second.value; //get respective value
-                }
-                //continue main loop until end of var name
-                i = next_i-1;
+            size_t old_i = i;
+            std::string val = expand_variable(input, i, env_vars);
+            if (i != old_i) { //Var name was found and index advanced
+                current += val;
                 continue;
             }
-            //treat isolated $ as literal
         }
 
+        //Word boundary (spaces outside quotes)
         if(std::isspace(static_cast<unsigned char>(c)) && quote == Quote::None){
             //ignore empty tokens, like ""
             if(!current.empty()){
-                tokens.push_back(current);
+                tokens.push_back(std::move(current));
                 current.clear();
             }
         }
@@ -115,9 +128,10 @@ std::vector<std::string> tokenize(const std::string& input, const std::unordered
             current += c;
         }
     }
+
     //add last token
     if (!current.empty()) {
-        tokens.push_back(current);
+        tokens.push_back(std::move(current));
     }
 
     return tokens;
@@ -267,7 +281,7 @@ std::expected<bool, std::string> is_assignment(const command_t& cmd) {
  * @return unexpected: A string with the error message
  */
 export std::expected<pipeline_t, std::string> parse(const std::string& input,
-                                                    const std::unordered_map<std::string, env_entry_t>& env_vars) {
+                                                const std::unordered_map<std::string, env_entry_t>& env_vars) {
 
     std::vector<std::string> tok_vec = tokenize(input, env_vars);
     pipeline_t pl;

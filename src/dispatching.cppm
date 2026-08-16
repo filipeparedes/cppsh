@@ -32,14 +32,16 @@ import cppsh.builtin.exit;
 import cppsh.builtin.history;
 import cppsh.builtin.help;
 import cppsh.builtin.export_cmd;
+import cppsh.builtin.unset;
 
 //List all built-in commands here
 //except for help cmd (treated separately)
 const std::vector<command_entry_t> entries = {
-    {"exit",    "Exit the shell",           "exit",        builtin_exit},
-    {"cd",      "Change directory",         "cd [dir]",    builtin_cd},
-    {"history", "List user's input history","history",     builtin_history},
-    {"export", "Create, update or list exported variables.", "export [VAR]=[val], export [VAR], export", builtin_export}
+    {"exit",    "Exit the shell",                            "exit",                                     builtin_exit},
+    {"cd",      "Change directory",                          "cd [dir]",                                 builtin_cd},
+    {"history", "List user's input history",                 "history",                                  builtin_history},
+    {"export",  "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export},
+    {"unset",   "Delete an environment variable",            "unset [VAR]",                              builtin_unset},
 };
 
 /**

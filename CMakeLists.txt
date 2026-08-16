@@ -26,6 +26,7 @@ target_sources(cppsh_lib
         src/commands/builtins/help.cppm
         src/commands/builtins/history.cppm
         src/commands/builtins/export.cppm
+        src/commands/builtins/unset.cppm
         src/dispatching.cppm
         src/execution.cppm
         src/shell_errors.cppm

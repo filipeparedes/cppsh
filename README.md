@@ -177,7 +177,7 @@ Error codes follow a structured range:
 - ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
 ### v0.4-beta (WIP)
-- Environment variables support
+- ✅ Environment variables support
 - Built-in echo with variable expansion
 - Logical operators (&&, ||)
 - Script file execution

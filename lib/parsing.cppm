@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.7.0
- * @date 2026-08-15
+ * @version 1.8.0
+ * @date 2026-08-16
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -70,11 +70,15 @@ std::string expand_variable(const std::string& input, size_t& i,
  * 
  * @param input The raw input string.
  * @param env_vars An unordered map of the environment variables
+ * @param last_exit_code The exit code for the last executed command
  *
  * @return A vector of string tokens.
  */
-std::vector<std::string> tokenize(const std::string& input, 
-                                const std::unordered_map<std::string, env_entry_t>& env_vars) {
+std::vector<std::string> tokenize(
+    const std::string& input, 
+    const std::unordered_map<std::string, env_entry_t>& env_vars,
+    int last_exit_code
+) {
     std::vector<std::string> tokens;
     bool is_escaped = false;
     Quote quote = Quote::None;
@@ -108,12 +112,19 @@ std::vector<std::string> tokenize(const std::string& input,
         //Variable expansion ($VAR)
         //only if quotes not single ('')
         if (c == '$' && quote != Quote::Single) {
-            size_t old_i = i;
-            std::string val = expand_variable(input, i, env_vars);
-            if (i != old_i) { //Var name was found and index advanced
-                current += val;
+            //$? => return last exit code
+            if ((i+1)<input.size() && input[i+1] == '?'){
+                current += std::to_string(last_exit_code);
+                i++;
                 continue;
-            }
+            } else {
+                size_t old_i = i;
+                std::string val = expand_variable(input, i, env_vars);
+                if (i != old_i) { //Var name was found and index advanced
+                    current += val;
+                    continue;
+                }
+            }   
         }
 
         //Word boundary (spaces outside quotes)
@@ -276,14 +287,17 @@ std::expected<bool, std::string> is_assignment(const command_t& cmd) {
  * 
  * @param input The raw input string from the user.
  * @param env_vars An unordered map of the environment variables
+ * @param last_exit_code The exit code for the last executed command
  *
  * @return expected: A Pipeline struct with populated Commands.
  * @return unexpected: A string with the error message
  */
-export std::expected<pipeline_t, std::string> parse(const std::string& input,
-                                                const std::unordered_map<std::string, env_entry_t>& env_vars = {}) {
-
-    std::vector<std::string> tok_vec = tokenize(input, env_vars);
+export std::expected<pipeline_t, std::string> parse(
+    const std::string& input,
+    const std::unordered_map<std::string, env_entry_t>& env_vars = {},
+    int last_exit_code = 0
+){
+    std::vector<std::string> tok_vec = tokenize(input, env_vars, last_exit_code);
     pipeline_t pl;
 
     is_bg(tok_vec, pl);

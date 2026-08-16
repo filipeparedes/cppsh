@@ -8,8 +8,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.1
- * @date 2026-06-19
+ * @version 1.1.0
+ * @date 2026-08-16
  *
  * @copyright Copyright (c) 2026
  *
@@ -32,4 +32,5 @@ export module cppsh.shell_state;
 export struct shell_state_t {
     std::vector<std::string> history;   // List of commands executed during the session
     std::unordered_map<std::string, env_entry_t> env_variables; // Map of the environment variables
+    int last_exit_code = 0;
 };

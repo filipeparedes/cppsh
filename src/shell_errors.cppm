@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com) 
  * 
- * @version 1.1.0
- * @date 2026-06-20
+ * @version 1.3.0
+ * @date 2026-08-16
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -32,6 +32,7 @@ export enum class error_code_t : int {
     INVALID_PATH                 = 0x0001,
     INVALID_ARGS                 = 0x0002,
     MISSING_REDIRECTION_TARGET   = 0x0003,
+    INVALID_IDENTIFIER           = 0x0004,
 
     //System errors (0x0100 - 0xFFFF)
     FORK_FAILED        = 0x0100,
@@ -86,6 +87,9 @@ export void print(const shell_error_t& error){
             break;
         case error_code_t::MISSING_REDIRECTION_TARGET:
             std::println(stderr, "{}: {}", error.cmd, error.usage);
+            break;
+        case error_code_t::INVALID_IDENTIFIER:
+            std::println(stderr, "{}: `{}`: not a valid identifier", error.cmd, error.arg);
             break;
         default:
             std::println(stderr, "An unexpected error has occurred.");

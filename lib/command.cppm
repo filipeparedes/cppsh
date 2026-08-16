@@ -4,7 +4,7 @@ module;
  * @brief Defines the Command struct.
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-19
  * 
  * @copyright Copyright (c) 2026
@@ -17,6 +17,14 @@ module;
 export module cppsh.command;
 
 /**
+ * @brief Command type flag enum, with all available command types
+ */
+export enum class command_type_t {
+    standard,    //Regular command, built-in or external
+    assignment   //Variable assignment command (VAR=val)
+};
+
+/**
  * @brief Represents a single parsed command.
 */
 export struct command_t {
@@ -24,4 +32,6 @@ export struct command_t {
     std::string input_file;         // from <
     std::string output_file;        // for > or >> 
     bool append = false;            // decide if > or >>
+
+    command_type_t type = command_type_t::standard; // Command-identifying flag
 };

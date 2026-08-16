@@ -120,3 +120,20 @@ export std::string get_username() {
     struct passwd* pw = getpwuid(getuid());
     return pw ? pw->pw_name : "user";
 }
+
+/**
+ * @brief Validates whether a variable name is a valid POSIX identifier.
+ *
+ * @param name The identifier to check.
+ * @return True if valid, false otherwise.
+ */
+export bool is_valid_identifier(const std::string& name) {
+    if (name.empty() || (!std::isalpha(static_cast<unsigned char>(name[0])) && name[0] != '_'))
+        return false;
+
+    for (char c : name) {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
+            return false;
+    }
+    return true;
+}

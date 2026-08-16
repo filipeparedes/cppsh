@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-23
+ * @version 1.2.0
+ * @date 2026-08-16
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -31,11 +31,15 @@ import cppsh.builtin.cd;
 import cppsh.builtin.exit;
 import cppsh.builtin.history;
 import cppsh.builtin.help;
+import cppsh.builtin.export_cmd;
 
+//List all built-in commands here
+//except for help cmd (treated separately)
 const std::vector<command_entry_t> entries = {
     {"exit",    "Exit the shell",           "exit",        builtin_exit},
     {"cd",      "Change directory",         "cd [dir]",    builtin_cd},
     {"history", "List user's input history","history",     builtin_history},
+    {"export", "Create, update or list exported variables.", "export [VAR]=[val], export [VAR], export", builtin_export}
 };
 
 /**

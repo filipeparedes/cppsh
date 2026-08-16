@@ -5,7 +5,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.1
+ * @version 0.1.0
  * @date 2026-08-16
  *
  * @copyright Copyright (c) 2026
@@ -24,17 +24,7 @@ import cppsh.command;
 import cppsh.shell_state;
 import cppsh.shell_errors;
 import cppsh.env_entry;
-
-static bool is_valid_identifier(const std::string& name) {
-    if (name.empty() || (!std::isalpha(static_cast<unsigned char>(name[0])) && name[0] != '_'))
-        return false;
-    
-    for (char c : name) {
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
-            return false;
-    }
-    return true;
-}
+import cppsh.utils;
 
 /**
  * @brief Export built-in command

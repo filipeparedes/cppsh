@@ -178,13 +178,13 @@ Error codes follow a structured range:
 
 ### v0.4-beta (WIP)
 - ✅ Environment variables support
-- Built-in echo with variable expansion
 - Logical operators (&&, ||)
+- Tab completion and line editing
 - Script file execution
 
 ### v1.0
 - Command aliasing (alias & unalias)
-- Tab completion and line editing
+- Built-in echo with variable expansion
 - User configuration file
 - Memory safety audit and leak detection
 - CI/CD with GitHub Actions

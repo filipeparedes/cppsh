@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.6.0
+ * @version 1.7.0
  * @date 2026-08-15
  * 
  * @copyright Copyright (c) 2026
@@ -281,7 +281,7 @@ std::expected<bool, std::string> is_assignment(const command_t& cmd) {
  * @return unexpected: A string with the error message
  */
 export std::expected<pipeline_t, std::string> parse(const std::string& input,
-                                                const std::unordered_map<std::string, env_entry_t>& env_vars) {
+                                                const std::unordered_map<std::string, env_entry_t>& env_vars = {}) {
 
     std::vector<std::string> tok_vec = tokenize(input, env_vars);
     pipeline_t pl;

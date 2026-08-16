@@ -36,11 +36,11 @@ target_sources(cppsh_lib
 add_executable(cppsh src/main.cpp)
 target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib 
 
-#find_package(GTest REQUIRED)
+find_package(GTest REQUIRED)
 
-#add_executable(tests
-#    tests/parser_test.cpp
-#    tests/dispatcher_test.cpp
-#    tests/pipe_test.cpp
-#)
-#target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest
+add_executable(tests
+    tests/parser_test.cpp
+    tests/dispatcher_test.cpp
+    tests/pipe_test.cpp
+)
+target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest

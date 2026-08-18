@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.0.0
- * @date 2026-08-17
+ * @version 2.1.0
+ * @date 2026-08-18
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -44,6 +44,153 @@ const std::vector<command_entry_t> entries = {
     {"unset",   "Delete an environment variable",            "unset [VAR]",                              builtin_unset},
 };
 
+/// ------- HELPER FUNCTIONS -------
+
+/**
+ * @brief Evaluates if the next pipeline should run
+ * based on logical op and current exit code
+ * 
+ * @param op The logical operator
+ * @param current_exit_code The current exit code
+ * @return true or false
+ */
+bool evaluate_state(logical_op_t op, int current_exit_code){
+    if (op == logical_op_t::AND) return (current_exit_code == 0);
+    if (op == logical_op_t::OR) return (current_exit_code != 0);
+    return true;
+}
+
+/**
+ * @brief Handles variable assignment
+ * 
+ * @param cmd The assignment command
+ * @param state The shell state
+ */
+void handle_assignment(const command_t& cmd, shell_state_t& state){
+    const std::string& arg = cmd.args[0];
+    size_t eq_pos = arg.find('=');
+    std::string key = arg.substr(0, eq_pos);
+    std::string value = arg.substr(eq_pos + 1);
+
+    state.env_variables[key] = env_entry_t{value, false};
+}
+
+/**
+ * @brief Checks if a command is the help command
+ * 
+ * @param cmd The command
+ * @return true or false
+ */
+bool is_help_cmd(const command_t& cmd){
+    return iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h");
+}
+
+/**
+ * @brief Set the up input redirection for a built-in command
+ * 
+ * @param input_file The input file
+ */
+void setup_input_redirection(const std::string& input_file){
+    if (input_file.empty()) return;
+
+    //get file descriptor for the input file
+    int fd = open(input_file.c_str(), O_RDONLY);
+    if (fd != -1) {
+        //redirect stdin to the input file
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+    }
+}
+
+/**
+ * @brief Set the up output redirection for a built-in command
+ * 
+ * @param output_file The output file
+ * @param append The append flag
+ */
+void setup_output_redirection(const std::string& output_file, bool append){
+    if (output_file.empty()) return;
+
+    //define if it overwrites (truncates) or appends
+    int flags = append ? O_WRONLY | O_CREAT | O_APPEND 
+                        : O_WRONLY | O_CREAT | O_TRUNC;
+    
+    //get file descriptor for the output file
+    int fd = open(output_file.c_str(), flags, 0644);
+    if (fd != -1){
+        //redirect stdout to the input file
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+    }
+
+}
+
+/// -------- MAIN DISPATCH LOGIC ---------
+
+/**
+ * @brief Attempts to find the respective build-in command and execute it
+ * 
+ * @param cmd The command
+ * @param state The shell state
+ * @param executed_builtin [out] Execution flag
+ *
+ * @returns Exit code on success
+ * @returns Shell Error on error
+ */
+std::expected<int, shell_error_t> try_execute_builtin(
+    const command_t& cmd, 
+    shell_state_t& state, 
+    bool& executed_builtin
+){
+    executed_builtin = false;
+
+    if (cmd.type == command_type_t::assignment){
+        handle_assignment(cmd, state);
+        executed_builtin = true;
+        return 0;
+    }
+
+    bool is_help = is_help_cmd(cmd);
+    const command_entry_t* matched_entry = nullptr;
+
+    if (!is_help){
+        //Search in built ins
+        for (const command_entry_t& entry : entries){
+            if (iequals(entry.name, cmd.args[0])){
+                matched_entry = &entry;
+                break;
+            }
+        }
+    }
+
+    if (is_help || matched_entry != nullptr) {
+        executed_builtin = true;
+
+        int saved_stdout = dup(STDOUT_FILENO);
+        int saved_stdin = dup(STDIN_FILENO);
+
+        setup_input_redirection(cmd.input_file);
+        setup_output_redirection(cmd.output_file, cmd.append);
+
+        std::expected<int, shell_error_t> result;
+
+        if (is_help) {
+            result = builtin_help(cmd, entries);
+        } else {
+            result = matched_entry->handler(cmd, state);
+        }
+
+        dup2(saved_stdout, STDOUT_FILENO);
+        dup2(saved_stdin, STDIN_FILENO);
+        close(saved_stdout);
+        close(saved_stdin);
+
+        return result;
+    }
+
+    return 0;
+}
+
 /**
  * @brief Dispatches a Pipeline of Commands
  * 
@@ -58,80 +205,18 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
     for (const pipeline_t& pl : log_pl) {
         if (run_next) {
-            command_t cmd;
             bool executed_builtin = false;
 
-            //If there is only one entry, check built ins
+            //Only one entry -> check built ins
             if (pl.cmds.size() == 1) {
-                cmd = pl.cmds[0];
+                std::expected<int, shell_error_t> builtin_res = try_execute_builtin(pl.cmds[0], state, executed_builtin);
 
-                //Handle assignment
-                if (pl.cmds.size() == 1 && pl.cmds[0].type == command_type_t::assignment) {
-                    const std::string& arg = pl.cmds[0].args[0];
-                    size_t eq_pos = arg.find('=');
-                    std::string key = arg.substr(0, eq_pos);
-                    std::string value = arg.substr(eq_pos + 1);
-
-                    state.env_variables[key] = env_entry_t{value, false};
-                    
-                    current_exit_code = 0;
-                    executed_builtin = true;
-                }
-                //Handle help cmd separately
-                else if (iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h")) {
-                    std::expected<int, shell_error_t> help_res = builtin_help(cmd, entries);
-                    if (!help_res) return help_res;
-
-                    current_exit_code = help_res.value();
-                    executed_builtin = true;
-                }
-                else {
-                    for (const command_entry_t& entry : entries) {
-                        if (iequals(entry.name, cmd.args[0])){
-                            //save default IO direction
-                            int saved_stdout = dup(STDOUT_FILENO);
-                            int saved_stdin = dup(STDIN_FILENO);
-
-                            //Input redirection
-                            if (!cmd.input_file.empty()) {
-                                //get file descriptor for the input file
-                                int fd = open(cmd.input_file.c_str(), O_RDONLY);
-
-                                //redirect stdin to the input file
-                                dup2(fd, STDIN_FILENO);
-                                close(fd);
-                            }
-
-                            //Output redirection
-                            if (!cmd.output_file.empty()) {
-                                //define if it overwrites (truncates) or appends
-                                int flags = cmd.append ? O_WRONLY | O_CREAT | O_APPEND 
-                                                    : O_WRONLY | O_CREAT | O_TRUNC;
-                                
-                                //get file descriptor for the output file
-                                int fd = open(cmd.output_file.c_str(), flags, 0644);
-
-                                //redirect stdout to the input file
-                                dup2(fd, STDOUT_FILENO);
-
-                                close(fd);
-                            }
-
-                            //Execute built-in
-                            std::expected<int, shell_error_t> result = entry.handler(cmd, state);
-
-                            //restore IO direction back to normal
-                            dup2(saved_stdout, STDOUT_FILENO);
-                            dup2(saved_stdin, STDIN_FILENO);
-                            close(saved_stdout);
-                            close(saved_stdin);
-
-                            if (!result) return result;
-
-                            current_exit_code = result.value();
-                            executed_builtin = true;
-                            break;
-                        }
+                if (executed_builtin){
+                    if (!builtin_res){
+                        print(builtin_res.error());
+                        current_exit_code = static_cast<int>(builtin_res.error().code);
+                    } else {
+                        current_exit_code = builtin_res.value();
                     }
                 }
             }
@@ -149,14 +234,7 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
             }
         }
 
-        //evaluate if next cmd should run based on exit code of the previous
-        if (pl.op == logical_op_t::AND){
-            run_next = (current_exit_code == 0); //&& needs success
-        } else if (pl.op == logical_op_t::OR) {
-            run_next = (current_exit_code != 0); //|| Needs failure
-        } else {
-            run_next = true;
-        }
+        run_next = evaluate_state(pl.op, current_exit_code);
     }
 
     return current_exit_code;

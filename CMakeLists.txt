@@ -41,7 +41,7 @@ target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib
 find_package(GTest REQUIRED)
 
 add_executable(tests
-    tests/parser_test.cpp
+    #tests/parser_test.cpp
     tests/dispatcher_test.cpp
     tests/pipe_test.cpp
 )

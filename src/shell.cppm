@@ -8,7 +8,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-08-16 
  * 
  * @copyright Copyright (c) 2026
@@ -78,7 +78,7 @@ export std::expected<void, shell_error_t> run() {
         state.history.push_back(input);
 
         //Parse input into Command-type obj
-        std::expected<pipeline_t, std::string> par = parse(input, state.env_variables, state.last_exit_code);
+        std::expected<std::vector<pipeline_t>, std::string> par = parse(input, state.env_variables, state.last_exit_code);
         if (!par) {
             state.last_exit_code = static_cast<int>(error_code_t::MISSING_REDIRECTION_TARGET);
             print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});

@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.8.0
- * @date 2026-08-16
+ * @version 2.0.0
+ * @date 2026-08-17
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -201,26 +201,38 @@ std::expected<void, std::string> redirect_io(command_t& cmd) {
 }
 
 /**
- * @brief Splits the tokens into a pipeline of commands
+ * @brief Splits the tokens into a list of pipelines (divided by && and ||),
+ * and splits each pipeline into commands (divided by |).
  * 
  * @param tok_vec [in, out] The user input as a vector of string tokens.
- * @param pl [in, out] The pipeline_t data
+ * @param log_pl [in, out] The vector of pipelines.
  */
-void split(std::vector<std::string>& tok_vec, pipeline_t& pl) {
+void split(std::vector<std::string>& tok_vec, std::vector<pipeline_t>& log_pl) {
+    pipeline_t pl;
+
     for (int i=0; i<tok_vec.size(); i++) {
-        //Look for pipe symbol
-        if (tok_vec[i] == "|"){
+        //Look for pipe symbol or logical operator
+        if (tok_vec[i] == "|" || tok_vec[i] == "&&" || tok_vec[i] == "||"){
             command_t cmd;
 
-            //copy every token until the '|'
+            //Create command with the tokens
             //there shouldn't exist any other pipe symbols before the pipe in tok_vec[i]
-            cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i);
-            pl.cmds.push_back(cmd);
+            if (i > 0) {
+                cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i);
+                pl.cmds.push_back(cmd);
+            }
 
-            //delete the command portion
+            //If logical operator, close pipeline and store it
+            if (tok_vec[i] == "&&" || tok_vec[i] == "||" ){
+                pl.op = (tok_vec[i] == "&&") ? logical_op_t::AND : logical_op_t::OR;
+                log_pl.push_back(std::move(pl));
+                pl = pipeline_t{}; //reset pipeline
+            }
+
+            //delete the command portion and operator
             tok_vec.erase(tok_vec.begin(), tok_vec.begin() + i+1);
 
-            //set to -1 so for loop's i++ changes it to 0
+            //set to -1 => loop's i++ changes back to 0
             i = -1;
         }
     }
@@ -231,6 +243,11 @@ void split(std::vector<std::string>& tok_vec, pipeline_t& pl) {
         cmd.args = tok_vec;
         pl.cmds.push_back(cmd);
     }
+
+    //add last pipeline if exists
+    if (!pl.cmds.empty()) {
+        log_pl.push_back(std::move(pl));
+    }
 }
 
 /**
@@ -240,11 +257,11 @@ void split(std::vector<std::string>& tok_vec, pipeline_t& pl) {
  * Also removes that instruction from tok_vec
  * 
  * @param tok_vec [in, out] The user input as a vector of string tokens.
- * @param pl [in, out] The pipeline_t data.
+ * @param is_background [out] Boolean flag to set.
  */
-void is_bg(std::vector<std::string>& tok_vec, pipeline_t& pl) {
+void is_bg(std::vector<std::string>& tok_vec, bool& is_background) {
     if (!tok_vec.empty() && tok_vec.back() == "&") {
-        pl.bg = true;
+        is_background = true;
         tok_vec.pop_back();
     }
 }
@@ -283,33 +300,42 @@ std::expected<bool, std::string> is_assignment(const command_t& cmd) {
 }
 
 /**
- * @brief Parses a raw input line into a Pipeline.
+ * @brief Parses a raw input line into a list of Pipelines.
  * 
  * @param input The raw input string from the user.
  * @param env_vars An unordered map of the environment variables
  * @param last_exit_code The exit code for the last executed command
  *
- * @return expected: A Pipeline struct with populated Commands.
+ * @return expected: A vector of pipeline structs with populated Commands.
  * @return unexpected: A string with the error message
  */
-export std::expected<pipeline_t, std::string> parse(
+export std::expected<std::vector<pipeline_t>, std::string> parse(
     const std::string& input,
     const std::unordered_map<std::string, env_entry_t>& env_vars = {},
     int last_exit_code = 0
 ){
     std::vector<std::string> tok_vec = tokenize(input, env_vars, last_exit_code);
-    pipeline_t pl;
+    std::vector<pipeline_t> log_pl;
 
-    is_bg(tok_vec, pl);
-    split(tok_vec, pl);
+    bool is_background = false;
+    is_bg(tok_vec, is_background);
 
-    for(command_t& cmd : pl.cmds) {
-        std::expected<bool, std::string> assign_res = is_assignment(cmd);
-        if (!assign_res) return std::unexpected(assign_res.error());
-        if (assign_res.value()) cmd.type = command_type_t::assignment;
+    split(tok_vec, log_pl);
 
-        std::expected<void, std::string> redi_res = redirect_io(cmd);
-        if (!redi_res) return std::unexpected(redi_res.error());   
+    //Background is applied to the last pipeline
+    if (!log_pl.empty()){
+        log_pl.back().bg = is_background;
     }
-    return pl;
+
+    for(pipeline_t& pl : log_pl) {
+        for (command_t& cmd : pl.cmds) {
+            std::expected<bool, std::string> assign_res = is_assignment(cmd);
+            if (!assign_res) return std::unexpected(assign_res.error());
+            if (assign_res.value()) cmd.type = command_type_t::assignment;
+
+            std::expected<void, std::string> redi_res = redirect_io(cmd);
+            if (!redi_res) return std::unexpected(redi_res.error()); 
+        }  
+    }
+    return log_pl;
 }

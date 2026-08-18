@@ -178,7 +178,7 @@ Error codes follow a structured range:
 
 ### v0.4-beta (WIP)
 - ✅ Environment variables support
-- Logical operators (&&, ||)
+- ✅ Logical operators (&&, ||)
 - Tab completion and line editing
 - Script file execution
 

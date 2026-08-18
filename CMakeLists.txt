@@ -43,6 +43,6 @@ find_package(GTest REQUIRED)
 add_executable(tests
     #tests/parser_test.cpp
     tests/dispatcher_test.cpp
-    #tests/pipe_test.cpp
+    tests/pipe_test.cpp
 )
 target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest

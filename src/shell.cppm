@@ -8,8 +8,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.4.0
- * @date 2026-08-16 
+ * @version 1.5.0
+ * @date 2026-08-23 
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -40,8 +40,8 @@ import cppsh.pipeline;
  * Displays the prompt in the format: user@hostname:~/path$
  * 
  */
-void print_prompt(const std::string& user, const std::string& hostname) {
-    std::print("{}@{}:{}$ ", user, hostname, get_cwd());
+std::string get_prompt(const std::string& user, const std::string& hostname) {
+    return std::format("{}@{}:{}$ ", user, hostname, get_cwd());
 }
 
 /**
@@ -60,9 +60,9 @@ export std::expected<void, shell_error_t> run() {
     handle_signal();
 
     while(true) {
-        print_prompt(user, hostname);
+        std::string prompt = get_prompt(user, hostname);
 
-        std::optional<std::string> input_opt = read_input();
+        std::optional<std::string> input_opt = read_input(prompt);
 
         //EOF (CTRL+D) - exit gracefully
         if (!input_opt) {

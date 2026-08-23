@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-24
+ * @version 1.2.0
+ * @date 2026-08-23
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -18,6 +18,9 @@ module;
 #include <unistd.h>
 #include <vector>
 #include <optional>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <cstdlib>
 
 export module cppsh.utils;
 
@@ -26,11 +29,18 @@ export module cppsh.utils;
  * 
  * @return The line entered by the user, or an empty string on EOF.
  */
-export std::optional<std::string> read_input() {
-    std::string line;
+export std::optional<std::string> read_input(const std::string& prompt) {
+    char* raw_input = readline(prompt.c_str());
+    //raw_input null -> EOF (Ctrl+D was pressed)
+    if (!raw_input) return std::nullopt;
 
-    if (!std::getline(std::cin, line)) return std::nullopt;
+    std::string line(raw_input);
 
+    if (!line.empty())
+         add_history(raw_input);
+
+    //readline allocates memory
+    free(raw_input);
     return line;
 }
 

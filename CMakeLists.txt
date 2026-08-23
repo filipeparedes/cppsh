@@ -9,6 +9,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
+# Search Readline lib
+find_library(READLINE_LIBRARY NAMES readline)
+if(NOT READLINE_LIBRARY)
+    message(FATAL_ERROR "Readline library not found! (Try: brew install readline)")
+endif()
+
 # static lib with all modules
 add_library(cppsh_lib STATIC)
 
@@ -37,6 +43,7 @@ target_sources(cppsh_lib
 
 add_executable(cppsh src/main.cpp)
 target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib 
+target_link_libraries(cppsh_lib PRIVATE ${READLINE_LIBRARY})
 
 find_package(GTest REQUIRED)
 

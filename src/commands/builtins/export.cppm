@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.1.0
- * @date 2026-08-16
+ * @version 1.0.0
+ * @date 2026-08-27
  *
  * @copyright Copyright (c) 2026
  *
@@ -39,10 +39,10 @@ import cppsh.utils;
  *
  * @return Status code.
  */
-export std::expected<int, shell_error_t> builtin_export(const command_t& command, shell_state_t& state) {
+export std::expected<int, shell_error_t> builtin_export(const command_t& command) {
     //No arguments => list all exported vars
     if (command.args.size()<2) {
-        for (const auto& [key, entry] : state.env_variables) {
+        for (const auto& [key, entry] : get_env_variables()) {
             if (entry.is_exported) {
                 std::println("{}=\"{}\"", key, entry.value);
             }
@@ -70,13 +70,27 @@ export std::expected<int, shell_error_t> builtin_export(const command_t& command
             return std::unexpected(shell_error_t{error_code_t::INVALID_IDENTIFIER, command.args[0], arg});
 
         if (has_value) {
-            state.env_variables[key] = env_entry_t{value, true};
+            auto result = add_env_variable(key, env_entry_t{value, true});
+            if (!result){
+                //return error directly to the caller (dispatcher)
+                return std::unexpected(result.error());
+            }
             setenv(key.c_str(), value.c_str(), 1);
         } else {
             //If already exists in state, mark as exported and sync to OS env
-            auto it = state.env_variables.find(key);
-            if (it != state.env_variables.end()){
-                it->second.is_exported = true;
+            const auto& envs = get_env_variables();
+            auto it = envs.find(key);
+
+            if (it != envs.end()){
+                //copy existing entry, update flag and re-insert
+                env_entry_t updated_entry = it->second;
+                updated_entry.is_exported = true;
+
+                auto result = add_env_variable(key, updated_entry);
+                if (!result){
+                    return std::unexpected(result.error());
+                }
+
                 setenv(key.c_str(), it->second.value.c_str(), 1);
             }
         }

@@ -37,6 +37,8 @@ export enum class error_code_t : int {
     //System errors (0x0100 - 0xFFFF)
     FORK_FAILED        = 0x0100,
     EXECVP_FAILED      = 0x0101,
+    VECPUSH_FAILED     = 0x0102,
+    MAPINSRT_FAILED    = 0x0103,
  };
 
 /**

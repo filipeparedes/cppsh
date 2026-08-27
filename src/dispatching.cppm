@@ -64,15 +64,28 @@ bool evaluate_state(logical_op_t op, int current_exit_code){
  * @brief Handles variable assignment
  * 
  * @param cmd The assignment command
- * @param state The shell state
  */
-void handle_assignment(const command_t& cmd, shell_state_t& state){
+void handle_assignment(const command_t& cmd){
     const std::string& arg = cmd.args[0];
     size_t eq_pos = arg.find('=');
+
+    //prevent crash if '=' is missing
+    if (eq_pos == std::string::npos) {
+        set_exit_code(1);
+        return;
+    }
+
     std::string key = arg.substr(0, eq_pos);
     std::string value = arg.substr(eq_pos + 1);
 
-    state.env_variables[key] = env_entry_t{value, false};
+    auto result = add_env_variable(key, env_entry_t{value, false});
+
+    if (!result){
+        print(result.error());
+        set_exit_code(1);
+    } else {
+        set_exit_code(0);
+    }
 }
 
 /**

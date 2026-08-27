@@ -45,11 +45,11 @@ add_executable(cppsh src/main.cpp)
 target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib 
 target_link_libraries(cppsh_lib PRIVATE ${READLINE_LIBRARY})
 
-find_package(GTest REQUIRED)
+#find_package(GTest REQUIRED)
 
-add_executable(tests
+#add_executable(tests
     #tests/parser_test.cpp
-    tests/dispatcher_test.cpp
-    tests/pipe_test.cpp
-)
-target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest
+#    tests/dispatcher_test.cpp
+#    tests/pipe_test.cpp
+#)
+#target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest

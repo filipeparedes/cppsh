@@ -35,7 +35,6 @@ import cppsh.utils;
  *      - export => (no args) Lists all exported vars
  *
  * @param command The parsed command.
- * @param shell_state_t& The shell state
  *
  * @return Status code.
  */

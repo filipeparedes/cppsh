@@ -8,8 +8,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.5.0
- * @date 2026-08-23 
+ * @version 1.6.0
+ * @date 2026-08-28 
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -53,14 +53,10 @@ std::string get_prompt(const std::string& user, const std::string& hostname) {
  * @returns Unexpected: shell_error_t
  */
 export std::expected<void, shell_error_t> run() {
-    std::string hostname = get_hostname();
-    std::string user = get_username();
-    shell_state_t state;
-
     handle_signal();
 
     while(true) {
-        std::string prompt = get_prompt(user, hostname);
+        std::string prompt = get_prompt(get_username(), get_hostname());
 
         std::optional<std::string> input_opt = read_input(prompt);
 
@@ -75,23 +71,28 @@ export std::expected<void, shell_error_t> run() {
         //Ignore blank lines
         if (input.empty() || input.find_first_not_of(" \t") == std::string::npos) continue;
 
-        state.history.push_back(input);
+        //add to history
+        auto add = add_to_history(input);
+        if (!add){
+            set_exit_code(static_cast<int>(add.error().code));
+            print(add.error());
+        }
 
         //Parse input into Command-type obj
-        std::expected<std::vector<pipeline_t>, std::string> par = parse(input, state.env_variables, state.last_exit_code);
+        auto par = parse(input, get_env_variables(), get_last_exit_code());
         if (!par) {
-            state.last_exit_code = static_cast<int>(error_code_t::MISSING_REDIRECTION_TARGET);
+            set_exit_code(static_cast<int>(error_code_t::MISSING_REDIRECTION_TARGET));
             print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});
             continue;
         }
 
         //Dispatch the command
-        std::expected<int, shell_error_t> dis = dispatch(par.value(), state);
+        auto dis = dispatch(par.value());
         if (!dis) {
-            state.last_exit_code = static_cast<int>(dis.error().code);
+            set_exit_code(static_cast<int>(dis.error().code));
             print(dis.error());
         } else {
-            state.last_exit_code = dis.value();
+            set_exit_code(dis.value());
         }
     }
 

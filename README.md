@@ -183,7 +183,12 @@ Error codes follow a structured range:
 - Script file execution
 
 ### v1.0
+- Total refactor & architecture review
 - Command aliasing (alias & unalias)
+- Subshells
+- Tilde expansion (~)
+  
+### v1.1
 - Built-in echo with variable expansion
 - User configuration file
 - Memory safety audit and leak detection

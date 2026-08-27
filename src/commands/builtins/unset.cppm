@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.1
- * @date 2026-08-16
+ * @version 1.0.0
+ * @date 2026-08-28
  *
  * @copyright Copyright (c) 2026
  *
@@ -31,10 +31,9 @@ import cppsh.utils;
  * Supports: unset VAR1 VAR2 ...
  *
  * @param command The parsed command.
- * @param state Shell state containing environment variables.
  * @return Status code.
  */
-export std::expected<int, shell_error_t> builtin_unset(const command_t& command, shell_state_t& state) {
+export std::expected<int, shell_error_t> builtin_unset(const command_t& command) {
     // unset with no arguments does nothing
     if (command.args.size() < 2) {
         return 0;
@@ -46,11 +45,7 @@ export std::expected<int, shell_error_t> builtin_unset(const command_t& command,
         if (!is_valid_identifier(key))
             return std::unexpected(shell_error_t{error_code_t::INVALID_IDENTIFIER, command.args[0], key});
 
-        // remove from internal shell state
-        state.env_variables.erase(key);
-
-        // remove from system process environment
-        unsetenv(key.c_str());
+        remove_env_variable(key);
     }
 
     return 0;

@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.0
- * @date 2026-08-27
+ * @version 1.1.0
+ * @date 2026-08-28
  *
  * @copyright Copyright (c) 2026
  *
@@ -75,7 +75,6 @@ export std::expected<int, shell_error_t> builtin_export(const command_t& command
                 //return error directly to the caller (dispatcher)
                 return std::unexpected(result.error());
             }
-            setenv(key.c_str(), value.c_str(), 1);
         } else {
             //If already exists in state, mark as exported and sync to OS env
             const auto& envs = get_env_variables();
@@ -90,8 +89,6 @@ export std::expected<int, shell_error_t> builtin_export(const command_t& command
                 if (!result){
                     return std::unexpected(result.error());
                 }
-
-                setenv(key.c_str(), it->second.value.c_str(), 1);
             }
         }
     }

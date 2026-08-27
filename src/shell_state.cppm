@@ -48,6 +48,9 @@ shell_state_t& get_internal_state(){
     return instance;
 }
 
+
+/// ------------- HISTORY FUNCTIONS ---------------
+
 /**
  * @brief Retrieves a read-only reference to the command history.
  * 
@@ -55,24 +58,6 @@ shell_state_t& get_internal_state(){
  */
 export const std::vector<std::string>& get_history(){
     return get_internal_state().history;
-}
-
-/**
- * @brief Retrieves a read-only reference to the environment variables.
- * 
- * @return Read-only reference to the environment map.
- */
-export const std::unordered_map<std::string, env_entry_t>& get_env_variables(){
-    return get_internal_state().env_variables;
-}
-
-/**
- * @brief Retrieves the exit code of the last executed command.
- * 
- * @return int The last exit code.
- */
-export int get_last_exit_code(){
-    return get_internal_state().last_exit_code;
 }
 
 /**
@@ -91,6 +76,18 @@ export std::expected<int, shell_error_t> add_to_history(const std::string& cmd){
     return 0;
 }
 
+
+/// --------------- ENV VARIABLES FUNCTIONS ------------
+
+/**
+ * @brief Retrieves a read-only reference to the environment variables.
+ * 
+ * @return Read-only reference to the environment map.
+ */
+export const std::unordered_map<std::string, env_entry_t>& get_env_variables(){
+    return get_internal_state().env_variables;
+}
+
 /**
  * @brief Inserts or updates an environment variable in the shell state.
  * 
@@ -100,7 +97,14 @@ export std::expected<int, shell_error_t> add_to_history(const std::string& cmd){
  */
 export std::expected<int, shell_error_t> add_env_variable(const std::string& key, const env_entry_t& entry){
     try {
+        // add to internal shell state
         get_internal_state().env_variables.insert_or_assign(key, entry);
+
+        if (entry.is_exported){
+            // add to system process environment
+            setenv(key.c_str(), entry.value.c_str(), 1);
+        }
+
     } catch (const std::bad_alloc&) {
         return std::unexpected(shell_error_t{error_code_t::MAPINSRT_FAILED});
     }
@@ -109,10 +113,37 @@ export std::expected<int, shell_error_t> add_env_variable(const std::string& key
 }
 
 /**
+ * @brief Removes an environemnt variable in the shell state.
+ * 
+ * @param key The name/key of the environment variable.
+ */
+export void remove_env_variable(const std::string& key){
+    auto& state = get_internal_state();
+
+    // remove from internal shell state
+    state.env_variables.erase(key);
+
+    // remove from system process environment
+    unsetenv(key.c_str());
+}
+
+
+/// ------------- EXIT CODE FUNCTIONS -------------
+
+/**
  * @brief Sets the exit code for the most recently executed command.
  * 
  * @param code The integer exit code to store.
  */
 export void set_exit_code(int code){
     get_internal_state().last_exit_code = code;
+}
+
+/**
+ * @brief Retrieves the exit code of the last executed command.
+ * 
+ * @return int The last exit code.
+ */
+export int get_last_exit_code(){
+    return get_internal_state().last_exit_code;
 }

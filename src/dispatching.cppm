@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.1.0
- * @date 2026-08-18
+ * @version 3.0.0
+ * @date 2026-08-27
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -144,21 +144,16 @@ void setup_output_redirection(const std::string& output_file, bool append){
  * @brief Attempts to find the respective build-in command and execute it
  * 
  * @param cmd The command
- * @param state The shell state
  * @param executed_builtin [out] Execution flag
  *
  * @returns Exit code on success
  * @returns Shell Error on error
  */
-std::expected<int, shell_error_t> try_execute_builtin(
-    const command_t& cmd, 
-    shell_state_t& state, 
-    bool& executed_builtin
-){
+std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool& executed_builtin){
     executed_builtin = false;
 
     if (cmd.type == command_type_t::assignment){
-        handle_assignment(cmd, state);
+        handle_assignment(cmd);
         executed_builtin = true;
         return 0;
     }
@@ -190,7 +185,7 @@ std::expected<int, shell_error_t> try_execute_builtin(
         if (is_help) {
             result = builtin_help(cmd, entries);
         } else {
-            result = matched_entry->handler(cmd, state);
+            result = matched_entry->handler(cmd);
         }
 
         dup2(saved_stdout, STDOUT_FILENO);
@@ -210,10 +205,10 @@ std::expected<int, shell_error_t> try_execute_builtin(
  * @param log_pl -  the list of pipeline to dispatch
  * @return The status code
  */
-export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>& log_pl, shell_state_t& state) {
+export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>& log_pl) {
     if (log_pl.empty()) return 0;
 
-    int current_exit_code = state.last_exit_code;
+    int current_exit_code = get_last_exit_code();
     bool run_next = true;
 
     for (const pipeline_t& pl : log_pl) {
@@ -222,7 +217,7 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
             //Only one entry -> check built ins
             if (pl.cmds.size() == 1) {
-                std::expected<int, shell_error_t> builtin_res = try_execute_builtin(pl.cmds[0], state, executed_builtin);
+                std::expected<int, shell_error_t> builtin_res = try_execute_builtin(pl.cmds[0], executed_builtin);
 
                 if (executed_builtin){
                     if (!builtin_res){

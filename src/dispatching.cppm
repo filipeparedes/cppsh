@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.0.0
- * @date 2026-08-27
+ * @version 3.1.0
+ * @date 2026-08-28
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -22,11 +22,13 @@ export module cppsh.dispatching;
 import cppsh.shell_errors;
 import cppsh.shell_state;
 import cppsh.command_entry;
+import cppsh.builtin_registry;
 import cppsh.env_entry;
 import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
 import cppsh.utils;
+
 import cppsh.builtin.cd;
 import cppsh.builtin.exit;
 import cppsh.builtin.history;
@@ -149,35 +151,29 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
     }
 
     bool is_help = is_help_cmd(cmd);
-    const command_entry_t* matched_entry = nullptr;
+    auto matched_builtin = is_help ? std::nullopt : get_builtin(cmd.args[0]);
 
-    if (!is_help){
-        //Search in built ins
-        for (const command_entry_t& entry : entries){
-            if (iequals(entry.name, cmd.args[0])){
-                matched_entry = &entry;
-                break;
-            }
-        }
-    }
-
-    if (is_help || matched_entry != nullptr) {
+    if (is_help || matched_entry.has_value()) {
         executed_builtin = true;
 
+        //save original FDs
         int saved_stdout = dup(STDOUT_FILENO);
         int saved_stdin = dup(STDIN_FILENO);
 
+        //apply redirections
         setup_input_redirection(cmd.input_file);
         setup_output_redirection(cmd.output_file, cmd.append);
 
         std::expected<int, shell_error_t> result;
 
+        //execute command
         if (is_help) {
-            result = builtin_help(cmd, entries);
+            result = builtin_help(cmd);
         } else {
-            result = matched_entry->handler(cmd);
+            result = matched_entry.value().get().handler(cmd);
         }
 
+        //restore original FDs
         dup2(saved_stdout, STDOUT_FILENO);
         dup2(saved_stdin, STDIN_FILENO);
         close(saved_stdout);
@@ -186,6 +182,7 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
         return result;
     }
 
+    //not built-in, dispatcher continues to fork/exec
     return 0;
 }
 

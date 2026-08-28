@@ -8,7 +8,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.1
+ * @version 0.0.2
  * @date 2026-08-28
  *
  * @copyright Copyright (c) 2026
@@ -20,7 +20,7 @@ module;
 #include <optional>
 #include <functional>
 
-export module cppsh.builtin.registry;
+export module cppsh.builtin_registry;
 
 import cppsh.command_entry; 
 import cppsh.shell_errors;

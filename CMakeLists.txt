@@ -27,6 +27,7 @@ target_sources(cppsh_lib
         lib/parsing.cppm
         lib/utils.cppm
         src/commands/command_entry.cppm
+        src/commands/builtin_registry.cppm
         src/commands/builtins/cd.cppm
         src/commands/builtins/exit.cppm
         src/commands/builtins/help.cppm

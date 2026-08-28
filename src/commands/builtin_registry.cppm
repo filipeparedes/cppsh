@@ -8,7 +8,7 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.2
+ * @version 0.0.3
  * @date 2026-08-28
  *
  * @copyright Copyright (c) 2026
@@ -28,7 +28,7 @@ import cppsh.shell_errors;
 import cppsh.builtin.exit;
 import cppsh.builtin.cd;
 import cppsh.builtin.history;
-import cppsh.builtin.export;
+import cppsh.builtin.export_cmd;
 import cppsh.builtin.unset;
 
 
@@ -63,7 +63,7 @@ export const std::vector<command_entry_t>& get_builtins(){
  * @return std::optional wrapping a reference to the command entry
  */
 export std::optional<std::reference_wrapper<const command_entry_t>> get_builtin(const std::string& name){
-    for (const auto& entry : entries) {
+    for (const auto& entry : entries){
         if (entry.name == name){
             return std::cref(entry); //Const REFerence wrapper
         }

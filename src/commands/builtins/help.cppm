@@ -5,13 +5,13 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 2.0.0
+ * @version 2.0.1
  * @date 2026-08-28
  *
  * @copyright Copyright (c) 2026
  *
  */
-#include <span>
+
 #include <expected>
 #include <print>
 
@@ -34,7 +34,7 @@ export std::expected<int, shell_error_t> builtin_help(const command_t& command) 
 
     int i = 2;
     for (const auto& builtin : get_builtins()) {
-        std::println("{} {} - {}", ++i, builtin.name, builtin.description);
+        std::println("{} {} - {}", i++, builtin.name, builtin.description);
     }
 
     return 0;

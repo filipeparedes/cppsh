@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.1.0
+ * @version 3.1.1
  * @date 2026-08-28
  * 
  * @copyright Copyright (c) 2026
@@ -16,6 +16,7 @@ module;
 #include <vector>
 #include <expected>
 #include <string>
+#include <optional>
 
 export module cppsh.dispatching;
 
@@ -153,7 +154,7 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
     bool is_help = is_help_cmd(cmd);
     auto matched_builtin = is_help ? std::nullopt : get_builtin(cmd.args[0]);
 
-    if (is_help || matched_entry.has_value()) {
+    if (is_help || matched_builtin.has_value()) {
         executed_builtin = true;
 
         //save original FDs
@@ -170,7 +171,7 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
         if (is_help) {
             result = builtin_help(cmd);
         } else {
-            result = matched_entry.value().get().handler(cmd);
+            result = matched_builtin.value().get().handler(cmd);
         }
 
         //restore original FDs

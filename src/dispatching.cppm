@@ -29,6 +29,7 @@ import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
 import cppsh.utils;
+import cppsh.builtin.help;
 
 /// ------- HELPER FUNCTIONS -------
 

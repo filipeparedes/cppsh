@@ -32,6 +32,7 @@ import cppsh.shell_errors;
 import cppsh.utils;
 import cppsh.shell_state;
 import cppsh.pipeline;
+import cppsh.completion;
 
 
 /**
@@ -54,6 +55,7 @@ std::string get_prompt(const std::string& user, const std::string& hostname) {
  */
 export std::expected<void, shell_error_t> run() {
     handle_signal();
+    setup_autocompletion();
 
     while(true) {
         std::string prompt = get_prompt(get_username(), get_hostname());

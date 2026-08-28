@@ -30,13 +30,6 @@ import cppsh.pipeline;
 import cppsh.execution;
 import cppsh.utils;
 
-import cppsh.builtin.cd;
-import cppsh.builtin.exit;
-import cppsh.builtin.history;
-import cppsh.builtin.help;
-import cppsh.builtin.export_cmd;
-import cppsh.builtin.unset;
-
 /// ------- HELPER FUNCTIONS -------
 
 /**

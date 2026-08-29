@@ -187,6 +187,7 @@ Error codes follow a structured range:
 - Command aliasing (alias & unalias)
 - Subshells
 - Tilde expansion (~)
+- User Manual
   
 ### v1.1
 - Built-in echo with variable expansion

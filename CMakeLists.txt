@@ -50,7 +50,7 @@ target_link_libraries(cppsh_lib PRIVATE ${READLINE_LIBRARY})
 find_package(GTest REQUIRED)
 
 add_executable(tests
-    #tests/parser_test.cpp
+    tests/parser_test.cpp
     tests/dispatcher_test.cpp
 #    tests/pipe_test.cpp
 )

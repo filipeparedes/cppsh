@@ -7,7 +7,6 @@
 import cppsh.parsing;
 import cppsh.pipeline;
 import cppsh.command;
-import cppsh.shell_state;
 import cppsh.env_entry;
 
 class ParserTest : public ::testing::Test {

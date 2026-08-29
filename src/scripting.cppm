@@ -38,7 +38,7 @@ export std::expected<int, shell_error_t> execute_file(const std::string& filenam
     std::string line;
     int last_status = 0;
 
-    while (std::getline(file, line)) {
+    while (std::getline(file, line)){
         //Ignore empty lines & comments
         if (line.empty() || line.starts_with('#'))
             continue;

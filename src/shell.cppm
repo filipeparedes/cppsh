@@ -53,7 +53,7 @@ std::string get_prompt(const std::string& user, const std::string& hostname) {
  *
  * @returns Unexpected: shell_error_t
  */
-export std::expected<void, shell_error_t> run() {
+export std::expected<int, shell_error_t> run() {
     handle_signal();
     setup_autocompletion();
 
@@ -98,5 +98,5 @@ export std::expected<void, shell_error_t> run() {
         }
     }
 
-    return {};
+    return get_last_exit_code();
 }

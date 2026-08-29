@@ -179,7 +179,7 @@ Error codes follow a structured range:
 ### v0.4-beta (WIP)
 - ✅ Environment variables support
 - ✅ Logical operators (&&, ||)
-- Tab completion and line editing
+- ✅ Tab completion and line editing
 - Script file execution
 
 ### v1.0

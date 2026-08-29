@@ -76,6 +76,14 @@ export std::expected<int, shell_error_t> add_to_history(const std::string& cmd){
     return 0;
 }
 
+/**
+ * @brief Clears the shell's command history.
+ * Useful for testing and resetting state.
+ */
+export void clear_history(){
+    get_internal_state().history.clear();
+}
+
 
 /// --------------- ENV VARIABLES FUNCTIONS ------------
 

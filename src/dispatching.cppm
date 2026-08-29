@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.1.0
- * @date 2026-08-18
+ * @version 3.1.1
+ * @date 2026-08-28
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -16,33 +16,20 @@ module;
 #include <vector>
 #include <expected>
 #include <string>
+#include <optional>
 
 export module cppsh.dispatching;
 
 import cppsh.shell_errors;
 import cppsh.shell_state;
 import cppsh.command_entry;
+import cppsh.builtin_registry;
 import cppsh.env_entry;
 import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
 import cppsh.utils;
-import cppsh.builtin.cd;
-import cppsh.builtin.exit;
-import cppsh.builtin.history;
 import cppsh.builtin.help;
-import cppsh.builtin.export_cmd;
-import cppsh.builtin.unset;
-
-//List all built-in commands here
-//except for help cmd (treated separately)
-const std::vector<command_entry_t> entries = {
-    {"exit",    "Exit the shell",                            "exit",                                     builtin_exit},
-    {"cd",      "Change directory",                          "cd [dir]",                                 builtin_cd},
-    {"history", "List user's input history",                 "history",                                  builtin_history},
-    {"export",  "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export},
-    {"unset",   "Delete an environment variable",            "unset [VAR]",                              builtin_unset},
-};
 
 /// ------- HELPER FUNCTIONS -------
 
@@ -64,15 +51,28 @@ bool evaluate_state(logical_op_t op, int current_exit_code){
  * @brief Handles variable assignment
  * 
  * @param cmd The assignment command
- * @param state The shell state
  */
-void handle_assignment(const command_t& cmd, shell_state_t& state){
+void handle_assignment(const command_t& cmd){
     const std::string& arg = cmd.args[0];
     size_t eq_pos = arg.find('=');
+
+    //prevent crash if '=' is missing
+    if (eq_pos == std::string::npos) {
+        set_exit_code(1);
+        return;
+    }
+
     std::string key = arg.substr(0, eq_pos);
     std::string value = arg.substr(eq_pos + 1);
 
-    state.env_variables[key] = env_entry_t{value, false};
+    auto result = add_env_variable(key, env_entry_t{value, false});
+
+    if (!result){
+        print(result.error());
+        set_exit_code(1);
+    } else {
+        set_exit_code(0);
+    }
 }
 
 /**
@@ -131,55 +131,44 @@ void setup_output_redirection(const std::string& output_file, bool append){
  * @brief Attempts to find the respective build-in command and execute it
  * 
  * @param cmd The command
- * @param state The shell state
  * @param executed_builtin [out] Execution flag
  *
  * @returns Exit code on success
  * @returns Shell Error on error
  */
-std::expected<int, shell_error_t> try_execute_builtin(
-    const command_t& cmd, 
-    shell_state_t& state, 
-    bool& executed_builtin
-){
+std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool& executed_builtin){
     executed_builtin = false;
 
     if (cmd.type == command_type_t::assignment){
-        handle_assignment(cmd, state);
+        handle_assignment(cmd);
         executed_builtin = true;
         return 0;
     }
 
     bool is_help = is_help_cmd(cmd);
-    const command_entry_t* matched_entry = nullptr;
+    auto matched_builtin = is_help ? std::nullopt : get_builtin(cmd.args[0]);
 
-    if (!is_help){
-        //Search in built ins
-        for (const command_entry_t& entry : entries){
-            if (iequals(entry.name, cmd.args[0])){
-                matched_entry = &entry;
-                break;
-            }
-        }
-    }
-
-    if (is_help || matched_entry != nullptr) {
+    if (is_help || matched_builtin.has_value()) {
         executed_builtin = true;
 
+        //save original FDs
         int saved_stdout = dup(STDOUT_FILENO);
         int saved_stdin = dup(STDIN_FILENO);
 
+        //apply redirections
         setup_input_redirection(cmd.input_file);
         setup_output_redirection(cmd.output_file, cmd.append);
 
         std::expected<int, shell_error_t> result;
 
+        //execute command
         if (is_help) {
-            result = builtin_help(cmd, entries);
+            result = builtin_help(cmd);
         } else {
-            result = matched_entry->handler(cmd, state);
+            result = matched_builtin.value().get().handler(cmd);
         }
 
+        //restore original FDs
         dup2(saved_stdout, STDOUT_FILENO);
         dup2(saved_stdin, STDIN_FILENO);
         close(saved_stdout);
@@ -188,6 +177,7 @@ std::expected<int, shell_error_t> try_execute_builtin(
         return result;
     }
 
+    //not built-in, dispatcher continues to fork/exec
     return 0;
 }
 
@@ -197,10 +187,10 @@ std::expected<int, shell_error_t> try_execute_builtin(
  * @param log_pl -  the list of pipeline to dispatch
  * @return The status code
  */
-export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>& log_pl, shell_state_t& state) {
+export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>& log_pl) {
     if (log_pl.empty()) return 0;
 
-    int current_exit_code = state.last_exit_code;
+    int current_exit_code = get_last_exit_code();
     bool run_next = true;
 
     for (const pipeline_t& pl : log_pl) {
@@ -209,7 +199,7 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
             //Only one entry -> check built ins
             if (pl.cmds.size() == 1) {
-                std::expected<int, shell_error_t> builtin_res = try_execute_builtin(pl.cmds[0], state, executed_builtin);
+                std::expected<int, shell_error_t> builtin_res = try_execute_builtin(pl.cmds[0], executed_builtin);
 
                 if (executed_builtin){
                     if (!builtin_res){

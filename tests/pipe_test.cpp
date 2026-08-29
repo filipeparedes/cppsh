@@ -1,17 +1,20 @@
 #include <gtest/gtest.h>
 #include <expected>
 #include <vector>
+#include <string>
+#include <unordered_map>
 
 import cppsh.parsing;
 import cppsh.pipeline;
-import cppsh.shell_state;
+import cppsh.env_entry;
 
 class PipeTest : public ::testing::Test {
 protected:
-    shell_state_t state;
+    std::unordered_map<std::string, env_entry_t> env_vars;
+    int last_exit_code = 0;
 
     pipeline_t parse_single_pipeline(const std::string& input) {
-        auto res = parse(input, state.env_variables, state.last_exit_code);
+        auto res = parse(input, env_vars, last_exit_code);
         EXPECT_TRUE(res.has_value());
         EXPECT_GE(res->size(), 1);
         return res.value()[0];

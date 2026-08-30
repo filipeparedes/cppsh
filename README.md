@@ -184,12 +184,12 @@ Error codes follow a structured range:
 
 ### v1.0
 - Total refactor & architecture review
-- Command aliasing (alias & unalias)
 - Subshells
 - Tilde expansion (~)
 - User Manual
   
 ### v1.1
+- Command aliasing (alias & unalias)
 - Built-in echo with variable expansion
 - User configuration file
 - Memory safety audit and leak detection

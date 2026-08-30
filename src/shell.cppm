@@ -8,8 +8,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.6.0
- * @date 2026-08-28 
+ * @version 1.7.0
+ * @date 2026-08-30
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -33,7 +33,29 @@ import cppsh.utils;
 import cppsh.shell_state;
 import cppsh.pipeline;
 import cppsh.completion;
+import cppsh.command_entry;
+import cppsh.builtin_registry;
 
+import cppsh.builtin.exit;
+import cppsh.builtin.cd;
+import cppsh.builtin.history;
+import cppsh.builtin.export_cmd;
+import cppsh.builtin.unset;
+import cppsh.builtin.source;
+
+/**
+ * @brief Initializes the builtin registry with the entries
+ */
+void init_builtins() {
+    if (get_builtins().empty()){
+        add_builtin(command_entry_t{"exit", "Exit the shell", "exit", builtin_exit});
+        add_builtin(command_entry_t{"cd", "Change directory", "cd [dir]", builtin_cd});
+        add_builtin(command_entry_t{"history", "List user's input history","history", builtin_history});
+        add_builtin(command_entry_t{"export", "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export});
+        add_builtin(command_entry_t{"unset", "Delete an environment variable", "unset [VAR]", builtin_unset});
+        add_builtin(command_entry_t{"source", "Execute a script file", "source [file]", builtin_source});
+    }
+}
 
 /**
  * @brief Builds and prints the shell prompt.
@@ -54,6 +76,7 @@ std::string get_prompt(const std::string& user, const std::string& hostname) {
  * @returns Unexpected: shell_error_t
  */
 export std::expected<int, shell_error_t> run() {
+    init_builtins();
     handle_signal();
     setup_autocompletion();
 

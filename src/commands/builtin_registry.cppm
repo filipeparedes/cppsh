@@ -8,8 +8,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.3
- * @date 2026-08-28
+ * @version 1.0.0
+ * @date 2026-08-30
  *
  * @copyright Copyright (c) 2026
  *
@@ -19,17 +19,12 @@ module;
 #include <string>
 #include <optional>
 #include <functional>
+#include <expected>
 
 export module cppsh.builtin_registry;
 
 import cppsh.command_entry; 
 import cppsh.shell_errors;
-
-import cppsh.builtin.exit;
-import cppsh.builtin.cd;
-import cppsh.builtin.history;
-import cppsh.builtin.export_cmd;
-import cppsh.builtin.unset;
 
 
 /**
@@ -39,13 +34,7 @@ import cppsh.builtin.unset;
  * when iterating over this list.
  * 
  */
-const std::vector<command_entry_t> entries = {
-    {"exit",    "Exit the shell",                            "exit",                                     builtin_exit},
-    {"cd",      "Change directory",                          "cd [dir]",                                 builtin_cd},
-    {"history", "List user's input history",                 "history",                                  builtin_history},
-    {"export",  "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export},
-    {"unset",   "Delete an environment variable",            "unset [VAR]",                              builtin_unset},
-};
+std::vector<command_entry_t> entries;
 
 /**
  * @brief Retrieves the complete list of built-in commands.
@@ -69,4 +58,20 @@ export std::optional<std::reference_wrapper<const command_entry_t>> get_builtin(
         }
     }
     return std::nullopt;
+}
+
+/**
+ * @brief 
+ * 
+ * @param builtin 
+ * @return export 
+ */
+export std::expected<int, shell_error_t> add_builtin(const command_entry_t& builtin){
+    try {
+        entries.push_back(builtin);
+    } catch (const std::bad_alloc&) {
+        return std::unexpected(shell_error_t{error_code_t::VECPUSH_FAILED});
+    }
+
+    return 0;
 }

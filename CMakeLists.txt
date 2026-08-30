@@ -34,9 +34,11 @@ target_sources(cppsh_lib
         src/commands/builtins/history.cppm
         src/commands/builtins/export.cppm
         src/commands/builtins/unset.cppm
+        src/commands/builtins/source.cppm
         src/completion.cppm
         src/dispatching.cppm
         src/execution.cppm
+        src/scripting.cppm
         src/shell_errors.cppm
         src/shell_state.cppm
         src/shell.cppm

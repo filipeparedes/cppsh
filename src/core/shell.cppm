@@ -8,7 +8,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.8.0
+ * @version 1.8.1
  * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
@@ -43,6 +43,7 @@ import cppsh.builtin.unset;
 import cppsh.builtin.source;
 
 import utils.sys_utils;
+import utils.io_utils;
 
 /**
  * @brief Initializes the builtin registry with the entries
@@ -84,7 +85,7 @@ export std::expected<int, shell_error_t> run() {
     while(true) {
         std::string prompt = get_prompt(sys_utils::get_username(), sys_utils::get_hostname());
 
-        std::optional<std::string> input_opt = read_input(prompt);
+        std::optional<std::string> input_opt = io_utils::read_input(prompt);
 
         //EOF (CTRL+D) - exit gracefully
         if (!input_opt) {

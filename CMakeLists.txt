@@ -26,9 +26,9 @@ target_sources(cppsh_lib
         lib/command.cppm
         lib/pipeline.cppm
         lib/parsing.cppm
-        lib/utils.cppm
         lib/utils/str_utils.cppm
         lib/utils/sys_utils.cppm
+        lib/utils/io_utils.cppm
         # command related
         src/commands/command_entry.cppm
         src/commands/builtin_registry.cppm

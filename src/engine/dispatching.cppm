@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.2.1
+ * @version 3.2.2
  * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
@@ -83,7 +83,7 @@ void handle_assignment(const command_t& cmd){
  * @return true or false
  */
 bool is_help_cmd(const command_t& cmd){
-    return str_utils::iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h");
+    return str_utils::iequals(cmd.args[0], "help") || str_utils::iequals(cmd.args[0], "-h");
 }
 
 /**

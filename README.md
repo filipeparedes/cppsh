@@ -207,14 +207,19 @@ Error codes follow a structured range:
 - ✅ Quotes and escape characters
 - ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
-### v0.4-beta (current)
-- ✅ Environment variables (assignment, expansion, $?)
-- ✅ export and unset built-ins
-- ✅ Logical operators (&& and ||)
-- ✅ Tab completion and line editing (readline)
-- ✅ Script file execution (source and CLI)
+### v0.4-beta (WIP)
+- ✅ Environment variables support
+- ✅ Logical operators (&&, ||)
+- ✅ Tab completion and line editing
+- ✅ Script file execution
 
 ### v1.0
+- Total refactor & architecture review
+- Subshells
+- Tilde expansion (~)
+- User Manual
+  
+### v1.1
 - Command aliasing (alias & unalias)
 - Built-in echo with variable expansion
 - User configuration file

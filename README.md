@@ -180,7 +180,7 @@ Error codes follow a structured range:
 - ✅ Environment variables support
 - ✅ Logical operators (&&, ||)
 - ✅ Tab completion and line editing
-- Script file execution
+- ✅ Script file execution
 
 ### v1.0
 - Total refactor & architecture review

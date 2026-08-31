@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.0.0
- * @date 2026-08-17
+ * @version 2.1.0
+ * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -80,9 +80,11 @@ std::vector<std::string> tokenize(
     int last_exit_code
 ) {
     std::vector<std::string> tokens;
+    std::string current;
+    current.reserve(32); //avoid heap reallocations
+
     bool is_escaped = false;
     Quote quote = Quote::None;
-    std::string current;
 
     //loop the string char by char
     for (size_t i=0; i<input.size(); ++i){
@@ -114,17 +116,16 @@ std::vector<std::string> tokenize(
         if (c == '$' && quote != Quote::Single) {
             //$? => return last exit code
             if ((i+1)<input.size() && input[i+1] == '?'){
-                current += std::to_string(last_exit_code);
+                current.append(std::to_string(last_exit_code));
                 i++;
-                continue;
             } else {
                 size_t old_i = i;
                 std::string val = expand_variable(input, i, env_vars);
-                if (i != old_i) { //Var name was found and index advanced
-                    current += val;
-                    continue;
-                }
+
+                if (i != old_i) //Var name was found and index advanced
+                    current.append(val);
             }   
+            continue;
         }
 
         //Word boundary (spaces outside quotes)
@@ -141,9 +142,8 @@ std::vector<std::string> tokenize(
     }
 
     //add last token
-    if (!current.empty()) {
+    if (!current.empty())
         tokens.push_back(std::move(current));
-    }
 
     return tokens;
 }

@@ -21,11 +21,13 @@ add_library(cppsh_lib STATIC)
 target_sources(cppsh_lib
     PUBLIC
     FILE_SET CXX_MODULES FILES
+        # external 'libs'
         lib/env_entry.cppm
         lib/command.cppm
         lib/pipeline.cppm
         lib/parsing.cppm
         lib/utils.cppm
+        # command related
         src/commands/command_entry.cppm
         src/commands/builtin_registry.cppm
         src/commands/builtins/cd.cppm
@@ -35,14 +37,17 @@ target_sources(cppsh_lib
         src/commands/builtins/export.cppm
         src/commands/builtins/unset.cppm
         src/commands/builtins/source.cppm
-        src/completion.cppm
-        src/dispatching.cppm
-        src/execution.cppm
-        src/scripting.cppm
-        src/shell_errors.cppm
-        src/shell_state.cppm
-        src/shell.cppm
-        src/signal_handling.cppm
+        # cli
+        src/cli/completion.cppm
+        src/cli/signal_handling.cppm
+        # engine
+        src/engine/dispatching.cppm
+        src/engine/execution.cppm
+        src/engine/scripting.cppm
+        # core
+        src/core/shell_errors.cppm
+        src/core/shell_state.cppm
+        src/core/shell.cppm
 )
 
 add_executable(cppsh src/main.cpp)

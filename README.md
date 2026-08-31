@@ -207,13 +207,13 @@ Error codes follow a structured range:
 - ✅ Quotes and escape characters
 - ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
-### v0.4-beta (WIP)
+### v0.4-beta (current)
 - ✅ Environment variables support
 - ✅ Logical operators (&&, ||)
 - ✅ Tab completion and line editing
 - ✅ Script file execution
 
-### v1.0
+### v1.0 (WIP)
 - Total refactor & architecture review
 - Subshells
 - Tilde expansion (~)

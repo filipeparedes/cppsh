@@ -8,8 +8,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.7.0
- * @date 2026-08-30
+ * @version 1.8.0
+ * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -29,7 +29,6 @@ import cppsh.dispatching;
 import cppsh.parsing;
 import cppsh.signal_handling;
 import cppsh.shell_errors;
-import cppsh.utils;
 import cppsh.shell_state;
 import cppsh.pipeline;
 import cppsh.completion;
@@ -42,6 +41,8 @@ import cppsh.builtin.history;
 import cppsh.builtin.export_cmd;
 import cppsh.builtin.unset;
 import cppsh.builtin.source;
+
+import utils.sys_utils;
 
 /**
  * @brief Initializes the builtin registry with the entries
@@ -64,7 +65,7 @@ void init_builtins() {
  * 
  */
 std::string get_prompt(const std::string& user, const std::string& hostname) {
-    return std::format("{}@{}:{}$ ", user, hostname, get_cwd());
+    return std::format("{}@{}:{}$ ", user, hostname, sys_utils::get_cwd());
 }
 
 /**
@@ -81,7 +82,7 @@ export std::expected<int, shell_error_t> run() {
     setup_autocompletion();
 
     while(true) {
-        std::string prompt = get_prompt(get_username(), get_hostname());
+        std::string prompt = get_prompt(sys_utils::get_username(), sys_utils::get_hostname());
 
         std::optional<std::string> input_opt = read_input(prompt);
 

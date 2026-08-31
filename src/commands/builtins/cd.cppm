@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.1.0
- * @date 2026-06-20
+ * @version 2.0.0
+ * @date 2026-08-27
  *
  * @copyright Copyright (c) 2026
  *
@@ -29,7 +29,7 @@ import cppsh.shell_errors;
  * @param command The parsed command (args ignored).
  * @return Status code.
  */
-export std::expected<int, shell_error_t> builtin_cd(const command_t& command, shell_state_t& state) {
+export std::expected<int, shell_error_t> builtin_cd(const command_t& command) {
     std::string dir;
 
     //No argument -> go to HOME, fallback to root

@@ -9,27 +9,45 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-add_executable(cppsh src/main.cpp)
+# Search Readline lib
+find_library(READLINE_LIBRARY NAMES readline)
+if(NOT READLINE_LIBRARY)
+    message(FATAL_ERROR "Readline library not found! (Try: brew install readline)")
+endif()
 
-target_sources(cppsh
+# static lib with all modules
+add_library(cppsh_lib STATIC)
+
+target_sources(cppsh_lib
     PUBLIC
     FILE_SET CXX_MODULES FILES
+        lib/env_entry.cppm
         lib/command.cppm
         lib/pipeline.cppm
         lib/parsing.cppm
         lib/utils.cppm
         src/commands/command_entry.cppm
+        src/commands/builtin_registry.cppm
         src/commands/builtins/cd.cppm
         src/commands/builtins/exit.cppm
         src/commands/builtins/help.cppm
         src/commands/builtins/history.cppm
+        src/commands/builtins/export.cppm
+        src/commands/builtins/unset.cppm
+        src/commands/builtins/source.cppm
+        src/completion.cppm
         src/dispatching.cppm
         src/execution.cppm
+        src/scripting.cppm
         src/shell_errors.cppm
         src/shell_state.cppm
         src/shell.cppm
         src/signal_handling.cppm
 )
+
+add_executable(cppsh src/main.cpp)
+target_link_libraries(cppsh PRIVATE cppsh_lib) # use static lib 
+target_link_libraries(cppsh_lib PRIVATE ${READLINE_LIBRARY})
 
 find_package(GTest REQUIRED)
 
@@ -38,24 +56,4 @@ add_executable(tests
     tests/dispatcher_test.cpp
     tests/pipe_test.cpp
 )
-
-target_sources(tests
-    PUBLIC
-    FILE_SET CXX_MODULES FILES
-        lib/command.cppm
-        lib/pipeline.cppm
-        lib/parsing.cppm
-        lib/utils.cppm
-        src/commands/command_entry.cppm
-        src/commands/builtins/cd.cppm
-        src/commands/builtins/exit.cppm
-        src/commands/builtins/help.cppm
-        src/commands/builtins/history.cppm
-        src/dispatching.cppm
-        src/execution.cppm
-        src/shell_errors.cppm
-        src/shell_state.cppm
-        src/signal_handling.cppm
-)
-
-target_link_libraries(tests PRIVATE GTest::gtest_main)
+target_link_libraries(tests PRIVATE cppsh_lib GTest::gtest_main) # use static lib & gtest

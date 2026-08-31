@@ -5,19 +5,21 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-24
+ * @version 1.2.0
+ * @date 2026-08-23
  * 
  * @copyright Copyright (c) 2026
  * 
 */
 
 #include <string>
-#include <iostream>
 #include <pwd.h>
 #include <unistd.h>
 #include <vector>
 #include <optional>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <cstdlib>
 
 export module cppsh.utils;
 
@@ -26,11 +28,18 @@ export module cppsh.utils;
  * 
  * @return The line entered by the user, or an empty string on EOF.
  */
-export std::optional<std::string> read_input() {
-    std::string line;
+export std::optional<std::string> read_input(const std::string& prompt) {
+    char* raw_input = readline(prompt.c_str());
+    //raw_input null -> EOF (Ctrl+D was pressed)
+    if (!raw_input) return std::nullopt;
 
-    if (!std::getline(std::cin, line)) return std::nullopt;
+    std::string line(raw_input);
 
+    if (!line.empty())
+         add_history(raw_input);
+
+    //readline allocates memory
+    free(raw_input);
     return line;
 }
 
@@ -119,4 +128,21 @@ export std::string get_hostname() {
 export std::string get_username() {
     struct passwd* pw = getpwuid(getuid());
     return pw ? pw->pw_name : "user";
+}
+
+/**
+ * @brief Validates whether a variable name is a valid POSIX identifier.
+ *
+ * @param name The identifier to check.
+ * @return True if valid, false otherwise.
+ */
+export bool is_valid_identifier(const std::string& name) {
+    if (name.empty() || (!std::isalpha(static_cast<unsigned char>(name[0])) && name[0] != '_'))
+        return false;
+
+    for (char c : name) {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
+            return false;
+    }
+    return true;
 }

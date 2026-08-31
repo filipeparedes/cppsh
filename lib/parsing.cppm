@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.2.0
+ * @version 2.3.0
  * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
@@ -158,46 +158,42 @@ std::vector<std::string> tokenize(
  * @param cmd [in, out] The command object.
  */
 std::expected<void, std::string> redirect_io(command_t& cmd) {
+    size_t write_idx = 0;
+
     // IO redirection
-    for (int i = 0; i<cmd.args.size(); i++) {
+    for (size_t i=0; i<cmd.args.size(); ++i) {
+        const std::string& arg = cmd.args[i];
+
         //Input Redirection
-        if (cmd.args[i] == "<"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '<'");
-
-            cmd.input_file = cmd.args[i + 1]; // next argument should be the file name
-
-            cmd.args.erase(cmd.args.begin() + i); //erase redirection operator
-            cmd.args.erase(cmd.args.begin() + i); //shifted down, erase file name
-
-            i--;
+        if (arg == "<"){
+            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '<'");
+            cmd.input_file = std::move(cmd.args[i+1]); // next argument should be the file name
+            i+=2; //skips operator & file
         } 
         //Output Redirection (Append)
-        else if (cmd.args[i] == ">>"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '>>'");
-
-            cmd.output_file = cmd.args[i + 1];
+        else if (arg == ">>"){
+            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '>>'");
+            cmd.output_file = std::move(cmd.args[i+1]);
             cmd.append = true; // >> appends instead of overwriting
-
-            cmd.args.erase(cmd.args.begin() + i);
-            cmd.args.erase(cmd.args.begin() + i);
-
-            i--;
+            i+=2;
         }
         //Output Redirection (Overwrite)
-        else if (cmd.args[i] == ">"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '>'");
-
-            cmd.output_file = cmd.args[i + 1];
-
-            cmd.args.erase(cmd.args.begin() + i);
-            cmd.args.erase(cmd.args.begin() + i);
-
-            i--;
+        else if (arg == ">"){
+            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '>'");
+            cmd.output_file = std::move(cmd.args[i+1]);
+            cmd.append = false; //guarantees overwrite
+            i+=2;
+        }
+        else {
+            //no redirection -> keep argument
+            if (write_idx != i)
+                cmd.args[write_idx] = std::move(cmd.args[i]);
+            write_idx++;
+            i++;
         }
     }
+    //resize vector to the num of remaining args
+    cmd.args.resize(write_idx);
     return {};
 }
 

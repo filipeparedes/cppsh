@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.1.0
- * @date 2026-08-28
+ * @version 1.2.0
+ * @date 2026-08-31
  *
  * @copyright Copyright (c) 2026
  *
@@ -24,7 +24,7 @@ import cppsh.command;
 import cppsh.shell_state;
 import cppsh.shell_errors;
 import cppsh.env_entry;
-import cppsh.utils;
+import utils.str_utils;
 
 /**
  * @brief Export built-in command
@@ -65,7 +65,7 @@ export std::expected<int, shell_error_t> builtin_export(const command_t& command
             key = arg;
         }
 
-        if (!is_valid_identifier(key))
+        if (!str_utils::is_valid_identifier(key))
             return std::unexpected(shell_error_t{error_code_t::INVALID_IDENTIFIER, command.args[0], arg});
 
         if (has_value) {

@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.1.1
- * @date 2026-08-28
+ * @version 3.2.1
+ * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -28,8 +28,9 @@ import cppsh.env_entry;
 import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
-import cppsh.utils;
 import cppsh.builtin.help;
+
+import utils.str_utils;
 
 /// ------- HELPER FUNCTIONS -------
 
@@ -82,7 +83,7 @@ void handle_assignment(const command_t& cmd){
  * @return true or false
  */
 bool is_help_cmd(const command_t& cmd){
-    return iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h");
+    return str_utils::iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h");
 }
 
 /**

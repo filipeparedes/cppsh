@@ -6,8 +6,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.1.0
- * @date 2026-06-20
+ * @version 1.2.0
+ * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -23,10 +23,10 @@ module;
 export module cppsh.execution;
 
 import cppsh.shell_errors;
-import cppsh.utils;
 import cppsh.pipeline;
 import cppsh.shell_state;
 import cppsh.command;
+import utils.str_utils;
 
 /**
  * @brief Executes a single command in a child process via fork + execvp.
@@ -69,7 +69,7 @@ std::expected<int, shell_error_t> exec_single(const pipeline_t& pl){
         signal(SIGINT, SIG_DFL); //Reset signal behaviour to default in child process
         signal(SIGTSTP, SIG_DFL);
 
-        std::vector<char*> argv = to_vchar(cmd.args);
+        std::vector<char*> argv = str_utils::to_vchar(cmd.args);
 
         //Input redirection
         if (!cmd.input_file.empty()) {
@@ -178,7 +178,7 @@ std::expected<int, shell_error_t> exec_pl(const pipeline_t& pl) {
                 close(fd);
             }
 
-            std::vector<char*> argv = to_vchar(pl.cmds[i].args);
+            std::vector<char*> argv = str_utils::to_vchar(pl.cmds[i].args);
             execvp(pl.cmds[i].args[0].c_str(), argv.data());
             exit(127);
         }

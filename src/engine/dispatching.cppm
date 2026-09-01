@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.3.1
+ * @version 3.3.2
  * @date 2026-09-01
  * 
  * @copyright Copyright (c) 2026
@@ -53,27 +53,23 @@ bool evaluate_state(logical_op_t op, int current_exit_code){
  * 
  * @param cmd The assignment command
  */
-void handle_assignment(const command_t& cmd){
+std::expected<int, shell_error_t> handle_assignment(const command_t& cmd){
     const std::string& arg = cmd.args[0];
     size_t eq_pos = arg.find('=');
 
     //prevent crash if '=' is missing
-    if (eq_pos == std::string::npos) {
-        set_exit_code(1);
-        return;
-    }
+    if (eq_pos == std::string::npos)
+        return std::unexpected(shell_error_t{error_code_t::INVALID_ARGS, "cppsh", arg, "Missing '='"});
 
     std::string key = arg.substr(0, eq_pos);
     std::string value = arg.substr(eq_pos + 1);
 
     auto result = add_env_variable(key, env_entry_t{value, false});
 
-    if (!result){
-        print(result.error());
-        set_exit_code(1);
-    } else {
-        set_exit_code(0);
-    }
+    if (!result)
+        return std::unexpected(result.error());
+
+    return 0;
 }
 
 /**
@@ -145,9 +141,8 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
     executed_builtin = false;
 
     if (cmd.type == command_type_t::assignment){
-        handle_assignment(cmd);
         executed_builtin = true;
-        return 0;
+        return handle_assignment(cmd);
     }
 
     bool is_help = is_help_cmd(cmd);
@@ -217,6 +212,7 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
                 if (executed_builtin){
                     if (!builtin_res){
+                        //forced to print -> return breaks chain
                         print(builtin_res.error());
                         current_exit_code = static_cast<int>(builtin_res.error().code);
                     } else {
@@ -231,10 +227,13 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
                 if (!res) return res;
 
                 //cmd not found
-                if (res.value() == 127)
-                    return std::unexpected(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
-                
-                current_exit_code = res.value();
+                if (res.value() == 127){
+                    //forced to print -> return breaks chain
+                    print(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
+                    current_exit_code = 127;
+                } else {
+                    current_exit_code = res.value();
+                }
             }
         }
 

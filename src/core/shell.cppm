@@ -50,12 +50,18 @@ import utils.io_utils;
  */
 export void init_builtins() {
     if (get_builtins().empty()){
-        add_builtin(command_entry_t{"exit", "Exit the shell", "exit", builtin_exit});
-        add_builtin(command_entry_t{"cd", "Change directory", "cd [dir]", builtin_cd});
-        add_builtin(command_entry_t{"history", "List user's input history","history", builtin_history});
-        add_builtin(command_entry_t{"export", "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export});
-        add_builtin(command_entry_t{"unset", "Delete an environment variable", "unset [VAR]", builtin_unset});
-        add_builtin(command_entry_t{"source", "Execute a script file", "source [file]", builtin_source});
+        auto register_cmd = [](const command_entry_t& cmd) {
+            if (auto res = add_builtin(cmd); !res) {
+                print(res.error());
+            }
+        };
+
+        register_cmd(command_entry_t{"exit", "Exit the shell", "exit", builtin_exit});
+        register_cmd(command_entry_t{"cd", "Change directory", "cd [dir]", builtin_cd});
+        register_cmd(command_entry_t{"history", "List user's input history","history", builtin_history});
+        register_cmd(command_entry_t{"export", "Create, update or list exported variables", "export [VAR]=[val], export [VAR], export", builtin_export});
+        register_cmd(command_entry_t{"unset", "Delete an environment variable", "unset [VAR]", builtin_unset});
+        register_cmd(command_entry_t{"source", "Execute a script file", "source [file]", builtin_source});
     }
 }
 
@@ -82,9 +88,11 @@ export std::expected<int, shell_error_t> run() {
     handle_signal();
     setup_autocompletion();
 
-    while(true) {
-        std::string prompt = get_prompt(sys_utils::get_username(), sys_utils::get_hostname());
+    const std::string user = sys_utils::get_username();
+    const std::string hostname = sys_utils::get_hostname();
 
+    while(true) {
+        std::string prompt = get_prompt(user, hostname);
         std::optional<std::string> input_opt = io_utils::read_input(prompt);
 
         //EOF (CTRL+D) - exit gracefully
@@ -94,7 +102,6 @@ export std::expected<int, shell_error_t> run() {
         }
 
         std::string input = std::move(input_opt.value());
-
         //Ignore blank lines
         if (input.empty() || input.find_first_not_of(" \t") == std::string::npos) continue;
 
@@ -108,8 +115,8 @@ export std::expected<int, shell_error_t> run() {
         //Parse input into Command-type obj
         auto par = parse(input, get_env_variables(), get_last_exit_code());
         if (!par) {
-            set_exit_code(static_cast<int>(error_code_t::MISSING_REDIRECTION_TARGET));
-            print(shell_error_t{error_code_t::MISSING_REDIRECTION_TARGET, "cppsh", "", par.error()});
+            set_exit_code(static_cast<int>(error_code_t::SYNTAX_ERROR));
+            print(shell_error_t{error_code_t::SYNTAX_ERROR, "cppsh", "", par.error()});
             continue;
         }
 

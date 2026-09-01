@@ -217,7 +217,7 @@ Error codes follow a structured range:
 - Total refactor & architecture review
 - Subshells
 - Tilde expansion (~)
-- User Manual
+- ✅ User Manual
   
 ### v1.1
 - Command aliasing (alias & unalias)

@@ -215,14 +215,16 @@ Error codes follow a structured range:
 
 ### v1.0 (WIP)
 - Total refactor & architecture review
-- Subshells
-- Tilde expansion (~)
 - ✅ User Manual
   
 ### v1.1
+- Subshells
+- Tilde expansion (~)
 - Command aliasing (alias & unalias)
-- Built-in echo with variable expansion
 - User configuration file
+
+### v1.2
+- Built-in echo with variable expansion
 - Memory safety audit and leak detection
 - CI/CD with GitHub Actions
 

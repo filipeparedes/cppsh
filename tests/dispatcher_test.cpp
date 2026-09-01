@@ -9,9 +9,14 @@ import cppsh.pipeline;
 import cppsh.command;
 import cppsh.shell_errors;
 import cppsh.shell_state;
+import cppsh.shell; 
 
 class DispatcherTest : public ::testing::Test {
 protected:
+    void SetUp() override {
+        init_builtins();
+    }
+
     pipeline_t make_pipeline(std::vector<std::string> args) {
         pipeline_t pl;
         command_t cmd;

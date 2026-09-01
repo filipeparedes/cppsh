@@ -8,7 +8,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 1.8.1
+ * @version 1.9.1
  * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
@@ -48,7 +48,7 @@ import utils.io_utils;
 /**
  * @brief Initializes the builtin registry with the entries
  */
-void init_builtins() {
+export void init_builtins() {
     if (get_builtins().empty()){
         add_builtin(command_entry_t{"exit", "Exit the shell", "exit", builtin_exit});
         add_builtin(command_entry_t{"cd", "Change directory", "cd [dir]", builtin_cd});

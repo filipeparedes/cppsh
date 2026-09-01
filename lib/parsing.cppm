@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.3.0
+ * @version 2.3.1
  * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
@@ -119,14 +119,16 @@ std::vector<std::string> tokenize(
             if ((i+1)<input.size() && input[i+1] == '?'){
                 current.append(std::to_string(last_exit_code));
                 i++;
+                continue;
             } else {
                 size_t old_i = i;
                 std::string val = expand_variable(input, i, env_vars);
 
-                if (i != old_i) //Var name was found and index advanced
+                if (i != old_i){ //Var name was found and index advanced
                     current.append(val);
+                    continue;
+                }
             }   
-            continue;
         }
 
         //Word boundary (spaces outside quotes)
@@ -158,42 +160,28 @@ std::vector<std::string> tokenize(
  * @param cmd [in, out] The command object.
  */
 std::expected<void, std::string> redirect_io(command_t& cmd) {
-    size_t write_idx = 0;
-
-    // IO redirection
-    for (size_t i=0; i<cmd.args.size(); ++i) {
-        const std::string& arg = cmd.args[i];
-
-        //Input Redirection
-        if (arg == "<"){
-            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '<'");
-            cmd.input_file = std::move(cmd.args[i+1]); // next argument should be the file name
-            i+=2; //skips operator & file
+    for (auto it = cmd.args.begin(); it != cmd.args.end(); ) {
+        if (*it == "<") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '<'");
+            cmd.input_file = *(it + 1);
+            it = cmd.args.erase(it, it + 2); 
         } 
-        //Output Redirection (Append)
-        else if (arg == ">>"){
-            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '>>'");
-            cmd.output_file = std::move(cmd.args[i+1]);
-            cmd.append = true; // >> appends instead of overwriting
-            i+=2;
-        }
-        //Output Redirection (Overwrite)
-        else if (arg == ">"){
-            if (i+1 >= cmd.args.size()) return std::unexpected("missing redirection target after '>'");
-            cmd.output_file = std::move(cmd.args[i+1]);
-            cmd.append = false; //guarantees overwrite
-            i+=2;
-        }
+        else if (*it == ">>") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '>>'");
+            cmd.output_file = *(it + 1);
+            cmd.append = true;
+            it = cmd.args.erase(it, it + 2);
+        } 
+        else if (*it == ">") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '>'");
+            cmd.output_file = *(it + 1);
+            cmd.append = false;
+            it = cmd.args.erase(it, it + 2);
+        } 
         else {
-            //no redirection -> keep argument
-            if (write_idx != i)
-                cmd.args[write_idx] = std::move(cmd.args[i]);
-            write_idx++;
-            i++;
+            ++it; 
         }
     }
-    //resize vector to the num of remaining args
-    cmd.args.resize(write_idx);
     return {};
 }
 
@@ -217,11 +205,7 @@ void split(std::vector<std::string>& tok_vec, std::vector<pipeline_t>& log_pl) {
 
             //Create command with tokens between 'start' and 'i'
             if (i > start) {
-                cmd.args.insert(
-                    cmd.args.end(),
-                    std::make_move_iterator(tok_vec.begin() + start),
-                    std::make_move_iterator(tok_vec.begin() + i)
-                );
+                cmd.args = std::vector<std::string>(tok_vec.begin() + start, tok_vec.begin() + i);
                 pl.cmds.push_back(std::move(cmd));
             }
 
@@ -240,12 +224,8 @@ void split(std::vector<std::string>& tok_vec, std::vector<pipeline_t>& log_pl) {
     //process the remaining
     if (start < tok_vec.size()) {
         command_t cmd;
-        cmd.args.insert(
-            cmd.args.end(),
-            std::make_move_iterator(tok_vec.begin() + start),
-            std::make_move_iterator(tok_vec.end())
-        );
-        pl.cmds.push_back(cmd);
+        cmd.args = std::vector<std::string>(tok_vec.begin() + start, tok_vec.end());
+        pl.cmds.push_back(std::move(cmd));
     }
 
     //add last pipeline if exists

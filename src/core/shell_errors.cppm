@@ -42,6 +42,7 @@ export enum class error_code_t : int {
     EXECVP_FAILED                = 0x0101,
     VECPUSH_FAILED               = 0x0102,
     MAPINSRT_FAILED              = 0x0103,
+    OPEN_FAILED                  = 0x0104,
  };
 
 /**

@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.2.2
- * @date 2026-08-31
+ * @version 3.3.2
+ * @date 2026-09-01
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -91,16 +91,19 @@ bool is_help_cmd(const command_t& cmd){
  * 
  * @param input_file The input file
  */
-void setup_input_redirection(const std::string& input_file){
-    if (input_file.empty()) return;
+std::expected <void, shell_error_t> setup_input_redirection(const std::string& input_file){
+    if (input_file.empty()) return {};
 
     //get file descriptor for the input file
     int fd = open(input_file.c_str(), O_RDONLY);
-    if (fd != -1) {
-        //redirect stdin to the input file
-        dup2(fd, STDIN_FILENO);
-        close(fd);
-    }
+    if (fd == -1)
+        return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", input_file});
+
+    //redirect stdin to the input file
+    dup2(fd, STDIN_FILENO);
+    close(fd);
+
+    return {};
 }
 
 /**
@@ -109,8 +112,8 @@ void setup_input_redirection(const std::string& input_file){
  * @param output_file The output file
  * @param append The append flag
  */
-void setup_output_redirection(const std::string& output_file, bool append){
-    if (output_file.empty()) return;
+std::expected<void, shell_error_t> setup_output_redirection(const std::string& output_file, bool append){
+    if (output_file.empty()) return {};
 
     //define if it overwrites (truncates) or appends
     int flags = append ? O_WRONLY | O_CREAT | O_APPEND 
@@ -118,12 +121,14 @@ void setup_output_redirection(const std::string& output_file, bool append){
     
     //get file descriptor for the output file
     int fd = open(output_file.c_str(), flags, 0644);
-    if (fd != -1){
-        //redirect stdout to the input file
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-    }
+    if (fd == -1)
+        return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", output_file});
 
+    //redirect stdout to the input file
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+
+    return {};
 }
 
 /// -------- MAIN DISPATCH LOGIC ---------
@@ -157,23 +162,32 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
         int saved_stdin = dup(STDIN_FILENO);
 
         //apply redirections
-        setup_input_redirection(cmd.input_file);
-        setup_output_redirection(cmd.output_file, cmd.append);
+        auto in_res = setup_input_redirection(cmd.input_file);
+        auto out_res = setup_output_redirection(cmd.output_file, cmd.append);
 
-        std::expected<int, shell_error_t> result;
+        std::expected<int, shell_error_t> result = 0;
 
-        //execute command
-        if (is_help) {
-            result = builtin_help(cmd);
+        if (!in_res) {
+            result = std::unexpected(in_res.error());
+        } else if (!out_res) {
+            result = std::unexpected(out_res.error());
         } else {
-            result = matched_builtin.value().get().handler(cmd);
+            //execute command if redirections succeeded
+            if (is_help)
+                result = builtin_help(cmd);
+            else 
+                result = matched_builtin.value().get().handler(cmd);
         }
 
-        //restore original FDs
-        dup2(saved_stdout, STDOUT_FILENO);
-        dup2(saved_stdin, STDIN_FILENO);
-        close(saved_stdout);
-        close(saved_stdin);
+        //restore original FDs safely
+        if (saved_stdout != -1) {
+            dup2(saved_stdout, STDOUT_FILENO);
+            close(saved_stdout);
+        }
+        if (saved_stdin != -1) {
+            dup2(saved_stdin, STDIN_FILENO);
+            close(saved_stdin);
+        }
 
         return result;
     }
@@ -218,9 +232,9 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
                 if (!res) return res;
 
                 //cmd not found
-                if (res.value() == 127){
+                if (res.value() == 127)
                     return std::unexpected(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
-                }
+                
                 current_exit_code = res.value();
             }
         }

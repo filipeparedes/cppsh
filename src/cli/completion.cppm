@@ -23,6 +23,9 @@ module;
 #include <vector>
 #include <filesystem>
 
+/**
+ * @brief Global environment variables array provided by the POSIX C library.
+ */
 extern "C" {
     extern char **environ;
 }

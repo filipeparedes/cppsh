@@ -5,7 +5,7 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.3.2
+ * @version 3.3.1
  * @date 2026-09-01
  * 
  * @copyright Copyright (c) 2026
@@ -95,13 +95,13 @@ std::expected <void, shell_error_t> setup_input_redirection(const std::string& i
     if (input_file.empty()) return {};
 
     //get file descriptor for the input file
-    int fd = open(input_file.c_str(), O_RDONLY);
-    if (fd == -1)
+    int file_desc = open(input_file.c_str(), O_RDONLY);
+    if (file_desc == -1)
         return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", input_file});
 
     //redirect stdin to the input file
-    dup2(fd, STDIN_FILENO);
-    close(fd);
+    dup2(file_desc, STDIN_FILENO);
+    close(file_desc);
 
     return {};
 }
@@ -119,14 +119,13 @@ std::expected<void, shell_error_t> setup_output_redirection(const std::string& o
     int flags = append ? O_WRONLY | O_CREAT | O_APPEND 
                         : O_WRONLY | O_CREAT | O_TRUNC;
     
-    //get file descriptor for the output file
-    int fd = open(output_file.c_str(), flags, 0644);
-    if (fd == -1)
+    int file_desc = open(output_file.c_str(), flags, 0644);
+    if (file_desc == -1)
         return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", output_file});
 
     //redirect stdout to the input file
-    dup2(fd, STDOUT_FILENO);
-    close(fd);
+    dup2(file_desc, STDOUT_FILENO);
+    close(file_desc);
 
     return {};
 }

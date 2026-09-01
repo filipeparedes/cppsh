@@ -225,11 +225,13 @@ Error codes follow a structured range:
 - ✅ User Manual
 
 ### v1.1
-- Command aliasing (alias & unalias)
 - Subshells
 - Tilde expansion (~)
-- Built-in echo with variable expansion
+- Command aliasing (alias & unalias)
 - User configuration file
+
+### v1.2
+- Built-in echo with variable expansion
 - Memory safety audit and leak detection
 - CI/CD with GitHub Actions
 

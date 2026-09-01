@@ -230,6 +230,8 @@ Error codes follow a structured range:
 
 ## Documentation
 
+For a complete guide on how to use cppsh, including commands, features, and examples, check the [User Manual](doc/user_manual.md).
+
 For detailed technical information about the code architecture, design patterns, tests, etc. check the [Technical Manual](doc/technical_manual.md).
 
 ## Author

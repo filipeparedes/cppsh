@@ -5,8 +5,8 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 3.1.1
- * @date 2026-08-28
+ * @version 3.3.2
+ * @date 2026-09-01
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -28,8 +28,9 @@ import cppsh.env_entry;
 import cppsh.command;
 import cppsh.pipeline;
 import cppsh.execution;
-import cppsh.utils;
 import cppsh.builtin.help;
+
+import utils.str_utils;
 
 /// ------- HELPER FUNCTIONS -------
 
@@ -52,27 +53,23 @@ bool evaluate_state(logical_op_t op, int current_exit_code){
  * 
  * @param cmd The assignment command
  */
-void handle_assignment(const command_t& cmd){
+std::expected<int, shell_error_t> handle_assignment(const command_t& cmd){
     const std::string& arg = cmd.args[0];
     size_t eq_pos = arg.find('=');
 
     //prevent crash if '=' is missing
-    if (eq_pos == std::string::npos) {
-        set_exit_code(1);
-        return;
-    }
+    if (eq_pos == std::string::npos)
+        return std::unexpected(shell_error_t{error_code_t::INVALID_ARGS, "cppsh", arg, "Missing '='"});
 
     std::string key = arg.substr(0, eq_pos);
     std::string value = arg.substr(eq_pos + 1);
 
     auto result = add_env_variable(key, env_entry_t{value, false});
 
-    if (!result){
-        print(result.error());
-        set_exit_code(1);
-    } else {
-        set_exit_code(0);
-    }
+    if (!result)
+        return std::unexpected(result.error());
+
+    return 0;
 }
 
 /**
@@ -82,7 +79,7 @@ void handle_assignment(const command_t& cmd){
  * @return true or false
  */
 bool is_help_cmd(const command_t& cmd){
-    return iequals(cmd.args[0], "help") || iequals(cmd.args[0], "-h");
+    return str_utils::iequals(cmd.args[0], "help") || str_utils::iequals(cmd.args[0], "-h");
 }
 
 /**
@@ -90,16 +87,19 @@ bool is_help_cmd(const command_t& cmd){
  * 
  * @param input_file The input file
  */
-void setup_input_redirection(const std::string& input_file){
-    if (input_file.empty()) return;
+std::expected <void, shell_error_t> setup_input_redirection(const std::string& input_file){
+    if (input_file.empty()) return {};
 
     //get file descriptor for the input file
-    int fd = open(input_file.c_str(), O_RDONLY);
-    if (fd != -1) {
-        //redirect stdin to the input file
-        dup2(fd, STDIN_FILENO);
-        close(fd);
-    }
+    int file_desc = open(input_file.c_str(), O_RDONLY);
+    if (file_desc == -1)
+        return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", input_file});
+
+    //redirect stdin to the input file
+    dup2(file_desc, STDIN_FILENO);
+    close(file_desc);
+
+    return {};
 }
 
 /**
@@ -108,21 +108,22 @@ void setup_input_redirection(const std::string& input_file){
  * @param output_file The output file
  * @param append The append flag
  */
-void setup_output_redirection(const std::string& output_file, bool append){
-    if (output_file.empty()) return;
+std::expected<void, shell_error_t> setup_output_redirection(const std::string& output_file, bool append){
+    if (output_file.empty()) return {};
 
     //define if it overwrites (truncates) or appends
     int flags = append ? O_WRONLY | O_CREAT | O_APPEND 
                         : O_WRONLY | O_CREAT | O_TRUNC;
     
-    //get file descriptor for the output file
-    int fd = open(output_file.c_str(), flags, 0644);
-    if (fd != -1){
-        //redirect stdout to the input file
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-    }
+    int file_desc = open(output_file.c_str(), flags, 0644);
+    if (file_desc == -1)
+        return std::unexpected(shell_error_t{error_code_t::OPEN_FAILED, "cppsh", output_file});
 
+    //redirect stdout to the input file
+    dup2(file_desc, STDOUT_FILENO);
+    close(file_desc);
+
+    return {};
 }
 
 /// -------- MAIN DISPATCH LOGIC ---------
@@ -140,9 +141,8 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
     executed_builtin = false;
 
     if (cmd.type == command_type_t::assignment){
-        handle_assignment(cmd);
         executed_builtin = true;
-        return 0;
+        return handle_assignment(cmd);
     }
 
     bool is_help = is_help_cmd(cmd);
@@ -156,23 +156,32 @@ std::expected<int, shell_error_t> try_execute_builtin(const command_t& cmd, bool
         int saved_stdin = dup(STDIN_FILENO);
 
         //apply redirections
-        setup_input_redirection(cmd.input_file);
-        setup_output_redirection(cmd.output_file, cmd.append);
+        auto in_res = setup_input_redirection(cmd.input_file);
+        auto out_res = setup_output_redirection(cmd.output_file, cmd.append);
 
-        std::expected<int, shell_error_t> result;
+        std::expected<int, shell_error_t> result = 0;
 
-        //execute command
-        if (is_help) {
-            result = builtin_help(cmd);
+        if (!in_res) {
+            result = std::unexpected(in_res.error());
+        } else if (!out_res) {
+            result = std::unexpected(out_res.error());
         } else {
-            result = matched_builtin.value().get().handler(cmd);
+            //execute command if redirections succeeded
+            if (is_help)
+                result = builtin_help(cmd);
+            else 
+                result = matched_builtin.value().get().handler(cmd);
         }
 
-        //restore original FDs
-        dup2(saved_stdout, STDOUT_FILENO);
-        dup2(saved_stdin, STDIN_FILENO);
-        close(saved_stdout);
-        close(saved_stdin);
+        //restore original FDs safely
+        if (saved_stdout != -1) {
+            dup2(saved_stdout, STDOUT_FILENO);
+            close(saved_stdout);
+        }
+        if (saved_stdin != -1) {
+            dup2(saved_stdin, STDIN_FILENO);
+            close(saved_stdin);
+        }
 
         return result;
     }
@@ -203,6 +212,7 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
                 if (executed_builtin){
                     if (!builtin_res){
+                        //forced to print -> return breaks chain
                         print(builtin_res.error());
                         current_exit_code = static_cast<int>(builtin_res.error().code);
                     } else {
@@ -218,9 +228,12 @@ export std::expected<int, shell_error_t> dispatch(const std::vector<pipeline_t>&
 
                 //cmd not found
                 if (res.value() == 127){
-                    return std::unexpected(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
+                    //forced to print -> return breaks chain
+                    print(shell_error_t{error_code_t::COMMAND_NOT_FOUND, pl.cmds[0].args[0]});
+                    current_exit_code = 127;
+                } else {
+                    current_exit_code = res.value();
                 }
-                current_exit_code = res.value();
             }
         }
 

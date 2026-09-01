@@ -9,9 +9,14 @@ import cppsh.pipeline;
 import cppsh.command;
 import cppsh.shell_errors;
 import cppsh.shell_state;
+import cppsh.shell; 
 
 class DispatcherTest : public ::testing::Test {
 protected:
+    void SetUp() override {
+        init_builtins();
+    }
+
     pipeline_t make_pipeline(std::vector<std::string> args) {
         pipeline_t pl;
         command_t cmd;
@@ -31,8 +36,8 @@ TEST_F(DispatcherTest, EmptyCommandReturnsZero) {
 TEST_F(DispatcherTest, UnknownCommandReturnsError) {
     pipeline_t pl = make_pipeline({"unknowncommand"});
     std::expected<int, shell_error_t> res = dispatch({pl});
-    EXPECT_FALSE(res.has_value());
-    EXPECT_EQ(res.error().code, error_code_t::COMMAND_NOT_FOUND);
+    EXPECT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), 127);
 }
 
 TEST_F(DispatcherTest, CdInvalidPathReturnsErrorCode) {

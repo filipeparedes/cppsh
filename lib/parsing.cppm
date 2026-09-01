@@ -5,14 +5,15 @@ module;
  * 
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  * 
- * @version 2.0.0
- * @date 2026-08-17
+ * @version 2.3.1
+ * @date 2026-08-31
  * 
  * @copyright Copyright (c) 2026
  * 
 */
 
 #include <cctype>
+#include <iterator>
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -80,9 +81,11 @@ std::vector<std::string> tokenize(
     int last_exit_code
 ) {
     std::vector<std::string> tokens;
+    std::string current;
+    current.reserve(32); //avoid heap reallocations
+
     bool is_escaped = false;
     Quote quote = Quote::None;
-    std::string current;
 
     //loop the string char by char
     for (size_t i=0; i<input.size(); ++i){
@@ -114,14 +117,15 @@ std::vector<std::string> tokenize(
         if (c == '$' && quote != Quote::Single) {
             //$? => return last exit code
             if ((i+1)<input.size() && input[i+1] == '?'){
-                current += std::to_string(last_exit_code);
+                current.append(std::to_string(last_exit_code));
                 i++;
                 continue;
             } else {
                 size_t old_i = i;
                 std::string val = expand_variable(input, i, env_vars);
-                if (i != old_i) { //Var name was found and index advanced
-                    current += val;
+
+                if (i != old_i){ //Var name was found and index advanced
+                    current.append(val);
                     continue;
                 }
             }   
@@ -141,9 +145,8 @@ std::vector<std::string> tokenize(
     }
 
     //add last token
-    if (!current.empty()) {
+    if (!current.empty())
         tokens.push_back(std::move(current));
-    }
 
     return tokens;
 }
@@ -157,44 +160,26 @@ std::vector<std::string> tokenize(
  * @param cmd [in, out] The command object.
  */
 std::expected<void, std::string> redirect_io(command_t& cmd) {
-    // IO redirection
-    for (int i = 0; i<cmd.args.size(); i++) {
-        //Input Redirection
-        if (cmd.args[i] == "<"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '<'");
-
-            cmd.input_file = cmd.args[i + 1]; // next argument should be the file name
-
-            cmd.args.erase(cmd.args.begin() + i); //erase redirection operator
-            cmd.args.erase(cmd.args.begin() + i); //shifted down, erase file name
-
-            i--;
+    for (auto it = cmd.args.begin(); it != cmd.args.end(); ) {
+        if (*it == "<") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '<'");
+            cmd.input_file = *(it + 1);
+            it = cmd.args.erase(it, it + 2); 
         } 
-        //Output Redirection (Append)
-        else if (cmd.args[i] == ">>"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '>>'");
-
-            cmd.output_file = cmd.args[i + 1];
-            cmd.append = true; // >> appends instead of overwriting
-
-            cmd.args.erase(cmd.args.begin() + i);
-            cmd.args.erase(cmd.args.begin() + i);
-
-            i--;
-        }
-        //Output Redirection (Overwrite)
-        else if (cmd.args[i] == ">"){
-            if (i + 1 >= cmd.args.size())
-                return std::unexpected("missing redirection target after '>'");
-
-            cmd.output_file = cmd.args[i + 1];
-
-            cmd.args.erase(cmd.args.begin() + i);
-            cmd.args.erase(cmd.args.begin() + i);
-
-            i--;
+        else if (*it == ">>") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '>>'");
+            cmd.output_file = *(it + 1);
+            cmd.append = true;
+            it = cmd.args.erase(it, it + 2);
+        } 
+        else if (*it == ">") {
+            if (it + 1 == cmd.args.end()) return std::unexpected("missing redirection target after '>'");
+            cmd.output_file = *(it + 1);
+            cmd.append = false;
+            it = cmd.args.erase(it, it + 2);
+        } 
+        else {
+            ++it; 
         }
     }
     return {};
@@ -209,45 +194,46 @@ std::expected<void, std::string> redirect_io(command_t& cmd) {
  */
 void split(std::vector<std::string>& tok_vec, std::vector<pipeline_t>& log_pl) {
     pipeline_t pl;
+    size_t start = 0; //start of current cmd's arguments
 
-    for (int i=0; i<tok_vec.size(); i++) {
+    for (int i=0; i<tok_vec.size(); ++i) {
+        const auto token = tok_vec[i];
+
         //Look for pipe symbol or logical operator
-        if (tok_vec[i] == "|" || tok_vec[i] == "&&" || tok_vec[i] == "||"){
+        if (token == "|" || token == "&&" || token == "||"){
             command_t cmd;
 
-            //Create command with the tokens
-            //there shouldn't exist any other pipe symbols before the pipe in tok_vec[i]
-            if (i > 0) {
-                cmd.args = std::vector<std::string>(tok_vec.begin(), tok_vec.begin() + i);
-                pl.cmds.push_back(cmd);
+            //Create command with tokens between 'start' and 'i'
+            if (i > start) {
+                cmd.args = std::vector<std::string>(tok_vec.begin() + start, tok_vec.begin() + i);
+                pl.cmds.push_back(std::move(cmd));
             }
 
             //If logical operator, close pipeline and store it
-            if (tok_vec[i] == "&&" || tok_vec[i] == "||" ){
-                pl.op = (tok_vec[i] == "&&") ? logical_op_t::AND : logical_op_t::OR;
+            if (token == "&&" || token == "||" ){
+                pl.op = (token == "&&") ? logical_op_t::AND : logical_op_t::OR;
                 log_pl.push_back(std::move(pl));
                 pl = pipeline_t{}; //reset pipeline
             }
 
-            //delete the command portion and operator
-            tok_vec.erase(tok_vec.begin(), tok_vec.begin() + i+1);
-
-            //set to -1 => loop's i++ changes back to 0
-            i = -1;
+            //Next command starts after this operator
+            start = i + 1;
         }
     }
 
-    //add last token if exists
-    if (!tok_vec.empty()) {
+    //process the remaining
+    if (start < tok_vec.size()) {
         command_t cmd;
-        cmd.args = tok_vec;
-        pl.cmds.push_back(cmd);
+        cmd.args = std::vector<std::string>(tok_vec.begin() + start, tok_vec.end());
+        pl.cmds.push_back(std::move(cmd));
     }
 
     //add last pipeline if exists
-    if (!pl.cmds.empty()) {
+    if (!pl.cmds.empty())
         log_pl.push_back(std::move(pl));
-    }
+
+    //can clean original vector since tokens have been moved/processed
+    tok_vec.clear();
 }
 
 /**
@@ -276,24 +262,21 @@ void is_bg(std::vector<std::string>& tok_vec, bool& is_background) {
  */
 std::expected<bool, std::string> is_assignment(const command_t& cmd) {
     if (cmd.args.empty()) return false;
-
     const std::string& arg = cmd.args[0];
+
     size_t eq_pos = arg.find('=');
+    if (eq_pos == std::string::npos) 
+        //NO '=' => not assignment;
+        return false;
 
-    //NO '=' means not assignment => regular command
-    if (eq_pos == std::string::npos) return false;
-
-    //Has '=' => assignment
     std::string key = arg.substr(0, eq_pos);
 
-    if (key.empty() || (!std::isalpha(key[0]) && key[0] != '_')) {
+    if (key.empty() || (!std::isalpha(key[0]) && key[0] != '_')) 
         return std::unexpected("var name must start with a letter or underscore");
-    }
 
     for (char c : key) {
-        if (!std::isalnum(c) && c != '_') {
+        if (!std::isalnum(c) && c != '_') 
             return std::unexpected("var name must be alphanumeric");
-        }
     }
 
     return true;
@@ -319,7 +302,6 @@ export std::expected<std::vector<pipeline_t>, std::string> parse(
 
     bool is_background = false;
     is_bg(tok_vec, is_background);
-
     split(tok_vec, log_pl);
 
     //Background is applied to the last pipeline

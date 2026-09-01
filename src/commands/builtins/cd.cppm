@@ -42,9 +42,8 @@ export std::expected<int, shell_error_t> builtin_cd(const command_t& command) {
     }
 
     // Change directory
-    if (chdir(dir.c_str()) == -1) {
+    if (chdir(dir.c_str()) == -1)
         return std::unexpected(shell_error_t{error_code_t::INVALID_PATH, command.args[0], dir});
-    }
 
    return 0;
 }

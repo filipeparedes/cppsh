@@ -36,12 +36,14 @@ export enum class error_code_t : int {
     INVALID_ARGS                 = 0x0002,
     MISSING_REDIRECTION_TARGET   = 0x0003,
     INVALID_IDENTIFIER           = 0x0004,
+    SYNTAX_ERROR                 = 0x0005,
 
     //System errors (0x0100 - 0xFFFF)
     FORK_FAILED                  = 0x0100,
     EXECVP_FAILED                = 0x0101,
     VECPUSH_FAILED               = 0x0102,
     MAPINSRT_FAILED              = 0x0103,
+    OPEN_FAILED                  = 0x0104,
  };
 
 /**
@@ -85,6 +87,7 @@ constexpr std::string_view get_error_template(error_code_t code) {
         case INVALID_ARGS:               return "{0}: '{1}' Invalid arguments\nUsage: {2}";
         case MISSING_REDIRECTION_TARGET: return "{0}: {2}";
         case INVALID_IDENTIFIER:         return "{0}: `{1}`: not a valid identifier";
+        case SYNTAX_ERROR:               return "{0}: syntax error: {2}";
         default:                         return "An unexpected error has occurred.";
     }
 }

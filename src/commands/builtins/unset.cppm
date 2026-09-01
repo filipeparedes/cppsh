@@ -5,8 +5,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 1.0.0
- * @date 2026-08-28
+ * @version 1.1.0
+ * @date 2026-08-31
  *
  * @copyright Copyright (c) 2026
  *
@@ -22,7 +22,7 @@ export module cppsh.builtin.unset;
 import cppsh.command;
 import cppsh.shell_state;
 import cppsh.shell_errors;
-import cppsh.utils;
+import utils.str_utils;
 
 /**
  * @brief Unset built-in command.
@@ -42,7 +42,7 @@ export std::expected<int, shell_error_t> builtin_unset(const command_t& command)
     for (size_t idx = 1; idx < command.args.size(); ++idx) {
         const std::string& key = command.args[idx];
 
-        if (!is_valid_identifier(key))
+        if (!str_utils::is_valid_identifier(key))
             return std::unexpected(shell_error_t{error_code_t::INVALID_IDENTIFIER, command.args[0], key});
 
         remove_env_variable(key);

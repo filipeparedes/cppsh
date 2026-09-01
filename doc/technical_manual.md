@@ -1,6 +1,6 @@
-# cppsh — Technical Manual
+# cppsh - Technical Manual
 
-> Version: v0.4-beta - covers the fourth release of cppsh.
+> Version: v1.0 - covers the first official release of cppsh.
 
 ## Table of Contents
 
@@ -27,35 +27,35 @@ cppsh follows a procedural, data-oriented architecture built on C++23 modules. A
 
 ```
 main(argc, argv)
-  ├── execute_file(argv[1])           — script mode
-  └── run()                           — interactive mode
+  ├── execute_file(argv[1])           - script mode
+  └── run()                           - interactive mode
         ├── init_builtins()
         ├── handle_signal()
         ├── setup_autocompletion()
-        ├── read_input(prompt)        — readline-based
+        ├── read_input(prompt)        - readline-based (io_utils)
         ├── parse(input, env, exit_code)
-        │     ├── tokenize()          — char-by-char, quotes, $VAR expansion
-        │     ├── is_bg()             — detects &
-        │     ├── split_logical()     — splits on &&, ||
-        │     ├── split()             — splits on |
-        │     └── redirect_io()       — detects <, >, >>
+        │     ├── tokenize()          - char-by-char, quotes, $VAR expansion
+        │     ├── is_bg()             - detects &
+        │     ├── split()             - splits on |, &&, ||
+        │     ├── is_assignment()     - detects VAR=value
+        │     └── redirect_io()      - detects <, >, >>
         │
         └── dispatch(log_pl)
-              ├── evaluate_state()    — && / || state machine
+              ├── evaluate_state()    - && / || state machine
               ├── try_execute_builtin()
-              │     ├── handle_assignment()   — VAR=value
-              │     ├── builtin_help()        — inline
-              │     └── get_builtin()         — registry lookup
+              │     ├── handle_assignment()   - VAR=value
+              │     ├── builtin_help()        - inline
+              │     └── get_builtin()         - registry lookup
               │           └── handler(cmd)
               └── exec(pl)
-                    ├── exec_single() — one fork + execvp
-                    └── exec_pl()     — N forks + N-1 pipes
+                    ├── exec_single() - one fork + execvp
+                    └── exec_pl()     - N forks + N-1 pipes
 ```
 
 **Data flow:**
 
 1. `main` routes to `run()` or `execute_file()` based on CLI arguments
-2. `run()` reads input via `read_input()` (readline)
+2. `run()` reads input via `io_utils::read_input()` (readline)
 3. Input is recorded in shell state via `add_to_history()`
 4. `parse()` returns `std::expected<std::vector<pipeline_t>, std::string>`
 5. `dispatch()` iterates logical pipelines, evaluating `&&`/`||` state machine
@@ -63,38 +63,70 @@ main(argc, argv)
 7. Errors propagate via `std::expected<int, shell_error_t>` - no exceptions
 8. Exit code stored via `set_exit_code()` after every command
 
+### Source Directory Structure
+
+```
+src/
+├── cli/
+│   ├── completion.cppm          # tab completion
+│   └── signal_handling.cppm     # SIGINT, SIGTSTP
+├── commands/
+│   ├── builtins/
+│   │   ├── cd.cppm
+│   │   ├── exit.cppm
+│   │   ├── export.cppm
+│   │   ├── help.cppm
+│   │   ├── history.cppm
+│   │   ├── source.cppm
+│   │   └── unset.cppm
+│   └── command_entry.cppm
+├── core/
+│   ├── shell_errors.cppm
+│   ├── shell_state.cppm
+│   └── shell.cppm
+├── engine/
+│   ├── dispatching.cppm
+│   ├── execution.cppm
+│   └── scripting.cppm
+└── main.cpp
+
+lib/
+├── command.cppm
+├── env_entry.cppm
+├── pipeline.cppm
+├── parsing.cppm
+└── utils/
+    ├── io_utils.cppm
+    ├── str_utils.cppm
+    └── sys_utils.cppm
+```
+
 ---
 
 ## Main Loop
 
-**Module:** `cppsh.shell` — `src/shell.cppm`
+**Module:** `cppsh.shell` - `src/core/shell.cppm`
 
 ### `init_builtins()`
 
-Registers all built-in commands into the builtin registry on first call (guarded by `get_builtins().empty()`). Called once at startup. Registered commands: `exit`, `cd`, `history`, `export`, `unset`, `source`. 
-
-`help` is not registered: handled inline in the dispatcher.
+Exported function. Registers all built-in commands into the builtin registry on first call (guarded by `get_builtins().empty()`). Uses a `register_cmd` lambda that calls `add_builtin()` and prints any registration error. Registered commands: `exit`, `cd`, `history`, `export`, `unset`, `source`. `help` is not registered - handled inline in the dispatcher.
 
 ### `get_prompt(user, hostname)`
 
-Returns a formatted prompt string `user@hostname:~/path$ ` using `std::format`. Resolves the current working directory via `get_cwd()`.
+Returns a formatted prompt string `user@hostname:~/path$ ` using `std::format`. Resolves the current working directory via `sys_utils::get_cwd()`. `user` and `hostname` are resolved once before the loop and reused on every iteration.
 
 ### `run()`
 
 Main REPL loop. On each iteration:
 
 - Builds prompt via `get_prompt()`
-- Reads input via `read_input(prompt)` — returns `std::optional<std::string>`; `std::nullopt` on EOF (`Ctrl+D`)
+- Reads input via `io_utils::read_input(prompt)` - returns `std::optional<std::string>`; `std::nullopt` on EOF (`Ctrl+D`)
 - Skips blank lines
 - Records input via `add_to_history()`
 - Calls `parse(input, get_env_variables(), get_last_exit_code())`
-- On parse error, calls `print(error)` and continues
+- On parse error, prints with `error_code_t::SYNTAX_ERROR` and continues
 - Calls `dispatch(par.value())`
-- On dispatch error or success, updates exit code via `set_exit_code()`
-
-### `read_input(prompt)`
-
-Uses `readline()` for input - provides line editing, arrow key navigation, and history. On non-empty input, calls `add_history()` to register with readline's internal history. Frees readline-allocated memory and returns `std::optional<std::string>`.
+- Updates exit code via `set_exit_code()` on both success and error
 
 ---
 
@@ -102,20 +134,24 @@ Uses `readline()` for input - provides line editing, arrow key navigation, and h
 
 **Module:** `cppsh.parsing` - `lib/parsing.cppm`
 
-Returns `std::expected<std::vector<pipeline_t>, std::string>`. The pipeline list is built through a sequence of transformation steps.
+Returns `std::expected<std::vector<pipeline_t>, std::string>`. The pipeline list is built through a sequence of transformation steps applied to the token vector.
 
-`parse(input, env_variables, last_exit_code)` — takes the current environment map and last exit code for variable expansion.
+`parse(input, env_vars, last_exit_code)` - takes the current environment map and last exit code for variable expansion. Both parameters have defaults (`{}` and `0`) allowing pure tokenization without state.
 
-### `tokenize(input, env_variables, last_exit_code)`
+### `tokenize(input, env_vars, last_exit_code)`
 
-Reads the input character by character. Handles:
+Reads the input character by character. Uses `current.reserve(32)` to avoid heap reallocations for typical token lengths. Pushes tokens via `std::move` to avoid copies. Handles:
 
 - **Whitespace** - token boundary when not inside quotes
 - **Double quotes `"`** - preserves spaces, performs `$VAR` expansion inside
 - **Single quotes `'`** - preserves everything literally, no expansion
 - **Backslash `\`** - escapes the next character (ignored inside single quotes)
-- **`$VAR`** - expands to the variable's value from `env_variables` or `getenv()`, inside double quotes or unquoted; `$?` expands to `last_exit_code`
-- **Unclosed quotes** — treated as open until EOF
+- **`$VAR`** - delegates to `expand_variable()`; `$?` expands to `last_exit_code`
+- **Unclosed quotes** - treated as open until EOF
+
+### `expand_variable(input, i, env_vars)`
+
+Helper extracted from `tokenize`. Reads a POSIX identifier starting after `$` - stops at the first non-alphanumeric, non-underscore character. Looks up the name in `env_vars` first, then falls back to `getenv()`. Returns an empty string if not found. Advances the caller's index `i` to the last character of the variable name. An isolated `$` with no valid identifier following returns `"$"` as a literal.
 
 **Example:**
 
@@ -124,37 +160,40 @@ name=Filipe
 echo "$name world"  →  ["echo", "Filipe world"]
 echo '$name'        →  ["echo", "$name"]
 echo $?             →  ["echo", "0"]
+echo prefix_$FILE   →  ["echo", "prefix_doc"]  (FILE=doc)
 ```
 
-### `is_bg(tok_vec, pl)`
+### `is_bg(tok_vec, is_background)`
 
-Checks if the last token is `&`. If so, sets `pl.bg = true` and removes the token.
+Checks if the last token is `&`. If so, sets the `is_background` flag and removes the token. Now takes a `bool&` instead of `pipeline_t&` - background is applied to the last pipeline after `split()`.
 
-### `split_logical(tok_vec)`
+### `split(tok_vec, log_pl)`
 
-Splits the token vector on `&&` and `||` operators, producing a list of `pipeline_t` with their associated `logical_op_t` (`AND`, `OR`, or `NONE` for the first pipeline).
+Single-pass function that handles both `|` and `&&`/`||` operators. Iterates the token vector tracking a `start` index for the current command's arguments:
 
-### `split(tok_vec, pl)`
+- On `|` - closes the current command and adds it to the current pipeline
+- On `&&` or `||` - closes the current command, closes the current pipeline with its `logical_op_t`, and starts a new pipeline
+- At end - adds any remaining tokens as the last command, pushes the last pipeline
 
-Splits on `|`, building `command_t` entries within a single `pipeline_t`.
+The `tok_vec` is cleared after processing since all tokens have been moved.
 
 ### `redirect_io(cmd)`
 
-Iterates `cmd.args` looking for `<`, `>`, `>>`. On match, sets the appropriate field and erases the operator and filename from `cmd.args`. Returns `std::unexpected(message)` if no filename follows.
+Refactored to use iterator-based traversal with `erase()` returning the next valid iterator - eliminates manual index management. Each operator and its filename are erased in a single `erase(it, it + 2)` call. Returns `std::unexpected(message)` if no filename follows an operator.
 
 ### `is_assignment(cmd)`
 
-Detects `KEY=VALUE` pattern in `cmd.args[0]`. Validates the key against POSIX rules — must start with a letter or underscore, contain only alphanumeric characters or underscores. Sets `cmd.type = command_type_t::assignment` on match.
+Detects `KEY=VALUE` pattern in `cmd.args[0]`. Validates the key against POSIX rules using `std::isalpha`/`std::isalnum` with `static_cast<unsigned char>`. Returns `std::unexpected` with an error message on invalid identifier syntax.
 
 ---
 
 ## Dispatcher
 
-**Module:** `cppsh.dispatching` - `src/dispatching.cppm`
+**Module:** `cppsh.dispatching` - `src/engine/dispatching.cppm`
 
 ### `dispatch(log_pl)`
 
-Receives `std::vector<pipeline_t>` -> the logical pipeline list from `parse()`. Iterates over each pipeline, applying the `&&`/`||` state machine:
+Receives `std::vector<pipeline_t>` - the logical pipeline list from `parse()`. Iterates over each pipeline, applying the `&&`/`||` state machine:
 
 ```
 for each pipeline_t pl:
@@ -192,7 +231,7 @@ Helper functions that open the target file and call `dup2()` to redirect `STDIN_
 
 ## Execution
 
-**Module:** `cppsh.execution` - `src/execution.cppm`
+**Module:** `cppsh.execution` - `src/engine/execution.cppm`
 
 ### `exec(pl)`
 
@@ -201,30 +240,47 @@ Routes based on pipeline size:
 - `pl.cmds.size() == 1` → `exec_single(pl)`
 - `pl.cmds.size() > 1` → `exec_pl(pl)`
 
+### `apply_child_redirections(cmd)`
+
+Helper extracted for reuse between `exec_single` and `exec_pl`. Opens the target files and calls `dup2()`. On `open()` failure, prints `OPEN_FAILED` error and calls `exit(1)` to prevent zombie child processes.
+
+### `parse_wait_status(status)`
+
+Helper that converts a raw `waitpid` status into a shell exit code:
+
+- `WIFEXITED` → `WEXITSTATUS(status)`
+- `WIFSIGNALED` or `WIFSTOPPED` → `128 + WTERMSIG(status)` (Unix convention for signal-terminated processes)
+- Otherwise → `0`
+
+### `close_pipes(pipes, count)`
+
+Helper that closes the first `count` pipe pairs. Used for cleanup on fork failure and after all children have been forked.
+
 ### `exec_single(pl)`
 
 1. `fork()` - on failure returns `std::unexpected(FORK_FAILED)`
-2. Parent - if `pl.bg`, prints PID and returns; otherwise `waitpid(WUNTRACED)`
+2. Parent - if `pl.bg`, prints PID and returns; otherwise `waitpid(WUNTRACED)`; exit code via `parse_wait_status()`
 3. Child:
    - `setpgrp()` - isolates child in own process group
    - Resets `SIGINT` and `SIGTSTP` to `SIG_DFL`
-   - Applies I/O redirection via `open()` + `dup2()`
+   - `apply_child_redirections(cmd)`
+   - `str_utils::to_vchar()` - converts args to `char**`
    - `execvp()` - searches `$PATH`
    - On failure - `exit(127)`
 
 ### `exec_pl(pl)`
 
-1. Creates N-1 pipes via `pipe()`
-2. Forks N children
-3. Each child: connects stdin/stdout to pipe ends via `dup2()`, closes all pipe fds, applies per-command I/O redirection, calls `execvp()`
-4. Parent closes all pipe ends, waits for all children
-5. Returns exit code of the last command
+1. Creates N-1 pipes via `pipe()` - on failure, closes already-opened pipes and returns `std::unexpected(FORK_FAILED)`
+2. Forks N children - on failure, closes all pipes and waits for already-created children to prevent zombies
+3. Each child: connects stdin/stdout to pipe ends via `dup2()`, `close_pipes()` all pipe fds, `apply_child_redirections()`, `execvp()`
+4. Parent: `close_pipes()` all pipe ends, waits for all children
+5. Returns exit code of the last command via `parse_wait_status()`
 
 ---
 
 ## Signal Handling
 
-**Module:** `cppsh.signal_handling` — `src/signal_handling.cppm`
+**Module:** `cppsh.signal_handling` - `src/cli/signal_handling.cppm`
 
 ### `handle_signal()`
 
@@ -234,13 +290,13 @@ Registers handlers for `SIGINT` and `SIGTSTP` via `sigaction`. Called once at st
 
 Parent shell ignores the signal. Child process (reset to `SIG_DFL`) terminates or suspends normally. `\r\033[K` clears the `^C`/`^Z` from the terminal line.
 
-> Run via `./build/cppsh` directly — intermediary processes interfere with signal delivery.
+> Run via `./build/cppsh` directly - intermediary processes interfere with signal delivery.
 
 ---
 
 ## Error Handling
 
-**Module:** `cppsh.shell_errors` - `src/shell_errors.cppm`
+**Module:** `cppsh.shell_errors` - `src/core/shell_errors.cppm`
 
 ### `error_code_t`
 
@@ -252,12 +308,14 @@ enum class error_code_t : int {
     INVALID_ARGS                = 0x0002,
     MISSING_REDIRECTION_TARGET  = 0x0003,
     INVALID_IDENTIFIER          = 0x0004,
+    SYNTAX_ERROR                = 0x0005,
 
     // System errors (0x0100 – 0xFFFF)
     FORK_FAILED                 = 0x0100,
     EXECVP_FAILED               = 0x0101,
     VECPUSH_FAILED              = 0x0102,
     MAPINSRT_FAILED             = 0x0103,
+    OPEN_FAILED                 = 0x0104,
 };
 ```
 
@@ -282,7 +340,7 @@ For system errors, prints `error[0x{:04x}]: os error: N (message)` to `stderr`. 
 
 ## Shell State
 
-**Module:** `cppsh.shell_state` - `src/shell_state.cppm`
+**Module:** `cppsh.shell_state` - `src/core/shell_state.cppm`
 
 The shell state is managed as a function-local static singleton accessed via `get_internal_state()`. This prevents the Static Initialization Order Fiasco and avoids passing state by reference through every function call.
 
@@ -318,7 +376,7 @@ The shell state is managed as a function-local static singleton accessed via `ge
 
 ## Builtin Registry
 
-**Module:** `cppsh.builtin_registry` — `src/builtin_registry.cppm`
+**Module:** `cppsh.builtin_registry` - `src/commands/builtin_registry.cppm`
 
 Centralizes the list of built-in commands to decouple the dispatcher, help system, and individual commands. Resolves the circular dependency that would arise if the dispatcher imported each builtin directly.
 
@@ -348,7 +406,7 @@ All builtins share the handler signature:
 using command_handler_t = std::expected<int, shell_error_t>(*)(const command_t&);
 ```
 
-Note: handlers no longer receive `shell_state_t&` - state is accessed via the singleton.
+Handlers access shell state via the singleton - no state parameter needed.
 
 ### `builtin_exit`
 
@@ -374,7 +432,7 @@ Calls `get_builtins()` and prints each entry's name and description. Not in the 
 
 ### `builtin_unset`
 
-Removes a variable via `remove_env_variable()`, which calls `unsetenv()`.
+Validates the identifier via `str_utils::is_valid_identifier()`. Removes the variable via `remove_env_variable()`, which calls `unsetenv()`.
 
 ### `builtin_source`
 
@@ -384,11 +442,11 @@ Reads a script file line by line and dispatches each line through the full parse
 
 ## Tab Completion
 
-**Module:** `cppsh.completion` - `src/completion.cppm`
+**Module:** `cppsh.completion` - `src/cli/completion.cppm`
 
 ### `setup_autocompletion()`
 
-Registers a readline completion function via `rl_completion_entry_function` or `rl_attempted_completion_function`. Called once at startup.
+Registers a readline completion function. Called once at startup.
 
 Completion behaviour:
 
@@ -401,7 +459,7 @@ Completion behaviour:
 
 ## Script Execution
 
-**Module:** `cppsh.scripting` — `src/scripting.cppm`
+**Module:** `cppsh.scripting` - `src/engine/scripting.cppm`
 
 ### `execute_file(path)`
 
@@ -413,37 +471,55 @@ Opens a script file and reads it line by line. For each line:
 
 Returns the exit code of the last executed command, propagated to the OS via `main()`.
 
-Scripts run in the current shell context - `source` and direct execution share the same state.
-
 ---
 
 ## Utility Library
 
-**Module:** `cppsh.utils` — `lib/utils.cppm`
+The utility library was split into three focused modules during the architecture review, replacing the previous monolithic `cppsh.utils`. All modules live under `lib/utils/` and use dedicated namespaces.
 
-### `get_username()`
+### `utils.str_utils` - `lib/utils/str_utils.cppm`
 
-Calls `getpwuid(getuid())`. Falls back to `"user"`.
+String manipulation and validation utilities.
 
-### `get_hostname()`
+#### `str_utils::iequals(str1, str2)`
+
+Case-insensitive comparison via `std::equal` + `std::tolower` with `static_cast<unsigned char>`. Short-circuits on size mismatch.
+
+#### `str_utils::to_vchar(v)`
+
+Converts `std::vector<std::string>` to `std::vector<char*>` terminated with `nullptr`. Uses `reserve(v.size() + 1)` to prevent reallocations.
+
+#### `str_utils::is_valid_identifier(name)`
+
+Validates a POSIX identifier - must start with a letter or underscore, contain only alphanumeric characters or underscores. Extracted from `is_assignment()` for reuse across builtins.
+
+---
+
+### `utils.sys_utils` - `lib/utils/sys_utils.cppm`
+
+OS-level system queries.
+
+#### `sys_utils::get_cwd()`
+
+Calls `getcwd()`. Substitutes `$HOME` prefix with `~`. Returns `"?"` on failure.
+
+#### `sys_utils::get_hostname()`
 
 Calls `gethostname()`. Falls back to `"localhost"`.
 
-### `get_cwd()`
+#### `sys_utils::get_username()`
 
-Calls `getcwd()`. Substitutes `$HOME` with `~`. Returns `"?"` on failure.
+Calls `getpwuid(getuid())`. Falls back to `"user"`.
 
-### `read_input(prompt)`
+---
 
-Wraps `readline()`. Returns `std::optional<std::string>` — `std::nullopt` on EOF.
+### `utils.io_utils` - `lib/utils/io_utils.cppm`
 
-### `iequals(a, b)`
+Input handling via readline.
 
-Case-insensitive comparison via `std::equal` + `std::tolower`.
+#### `io_utils::read_input(prompt)`
 
-### `to_vchar(v)`
-
-Converts `std::vector<std::string>` to `std::vector<char*>` terminated with `nullptr`.
+Wraps `readline()`. Calls `add_history()` for non-empty input. Frees readline-allocated memory. Returns `std::optional<std::string>` - `std::nullopt` on EOF.
 
 ---
 
@@ -494,7 +570,7 @@ cd build && ninja && ./tests
 | Test | Description |
 |---|---|
 | `EmptyCommandReturnsZero` | Empty logical pipeline returns `0` |
-| `UnknownCommandReturnsError` | Returns `std::unexpected` with `COMMAND_NOT_FOUND` |
+| `UnknownCommandReturnsError` | Returns `127` |
 | `CdInvalidPathReturnsErrorCode` | Returns `0` with error code as value - error handled by builtin |
 | `CdValidPathReturnsZero` | `cd /tmp` returns `0` |
 | `HistoryEmptyReturnsZero` | `history` with cleared state returns `0` |

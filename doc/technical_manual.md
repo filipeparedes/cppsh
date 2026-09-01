@@ -570,7 +570,7 @@ cd build && ninja && ./tests
 | Test | Description |
 |---|---|
 | `EmptyCommandReturnsZero` | Empty logical pipeline returns `0` |
-| `UnknownCommandReturnsError` | Returns `std::unexpected` with `COMMAND_NOT_FOUND` |
+| `UnknownCommandReturnsError` | Returns `127` |
 | `CdInvalidPathReturnsErrorCode` | Returns `0` with error code as value - error handled by builtin |
 | `CdValidPathReturnsZero` | `cd /tmp` returns `0` |
 | `HistoryEmptyReturnsZero` | `history` with cleared state returns `0` |

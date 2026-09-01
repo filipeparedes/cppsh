@@ -7,8 +7,8 @@ module;
  *
  * @author Filipe Paredes (filipeparedes3@gmail.com)
  *
- * @version 0.0.1
- * @date 2026-08-28
+ * @version 0.1.0
+ * @date 2026-09-01
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -18,9 +18,14 @@ module;
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
+#include <algorithm>
 #include <vector>
 #include <filesystem>
 
+/**
+ * @brief Global environment variables array provided by the POSIX C library.
+ */
 extern "C" {
     extern char **environ;
 }
@@ -45,7 +50,7 @@ char* command_generator(const char* text, int state) {
     if (state == 0) {
         matches.clear();
         match_index = 0;
-        std::string prefix(text);
+        std::string_view prefix(text);
 
         // Search in built-ins
         for (const auto& builtin : get_builtins()) {
@@ -56,27 +61,33 @@ char* command_generator(const char* text, int state) {
 
         // Search in system PATH for external executables
         if (const char* path_env = std::getenv("PATH")) {
-            std::string path_str(path_env);
+            std::string_view path_str(path_env);
             size_t start = 0;
-            size_t end = path_str.find(':');
             
-            while (start != std::string::npos) {
-                std::string dir = path_str.substr(start, end - start);
+            while (start < path_str.size()) {
+                size_t end = path_str.find(':', start);
+                std::string_view dir = path_str.substr(start, end - start);
+                start = (end == std::string_view::npos) ? path_str.size() : end+1;
                 
+                if (dir.empty()) continue;
+
                 std::error_code ec; // Prevent exceptions on invalid paths
-                if (std::filesystem::exists(dir, ec) && std::filesystem::is_directory(dir, ec)) {
+                //is_directory implies exists()
+                if (std::filesystem::is_directory(dir, ec)) {
                     for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
                         std::string filename = entry.path().filename().string();
                         if (filename.starts_with(prefix)) {
-                            matches.push_back(filename);
+                            matches.push_back(std::move(filename));
                         }
                     }
                 }
-                
-                start = (end == std::string::npos) ? std::string::npos : end + 1;
-                end = path_str.find(':', start);
             }
         }
+        
+        //remove duplicates (binaries present in /bin and /usr/bin)
+        std::ranges::sort(matches);
+        auto [first, last] = std::ranges::unique(matches);
+        matches.erase(first, last);
     }
 
     // Return the next match (readline frees the memory)
@@ -103,23 +114,29 @@ char* env_generator(const char* text, int state) {
         match_index = 0;
         
         includes_dollar = (text[0] == '$');
-        std::string prefix(text);
+        std::string_view prefix(text);
         if (includes_dollar) {
-            prefix = prefix.substr(1); // Ignore the '$' for comparison
+            prefix.remove_prefix(1); // ignore '$'
         }
 
         // Iterate through all system environment variables
         for (char **env = environ; *env != nullptr; ++env) {
-            std::string env_str(*env);
+            std::string_view env_str(*env);
             size_t eq_pos = env_str.find('=');
-            if (eq_pos != std::string::npos) {
-                std::string var_name = env_str.substr(0, eq_pos);
+
+            if (eq_pos != std::string_view::npos) {
+                std::string_view var_name = env_str.substr(0, eq_pos);
                 if (var_name.starts_with(prefix)) {
                     // Prepend '$' if the original input had it
-                    matches.push_back(includes_dollar ? "$" + var_name : var_name);
+                    if (includes_dollar)
+                        matches.push_back("$" + std::string(var_name));
+                    else 
+                        matches.emplace_back(var_name);
                 }
             }
         }
+
+        std::ranges::sort(matches);
     }
 
     //return next match on the list

@@ -42,9 +42,8 @@ export std::expected<int, shell_error_t> builtin_export(const command_t& command
     //No arguments => list all exported vars
     if (command.args.size()<2) {
         for (const auto& [key, entry] : get_env_variables()) {
-            if (entry.is_exported) {
+            if (entry.is_exported)
                 std::println("{}=\"{}\"", key, entry.value);
-            }
         }
         return 0;
     }

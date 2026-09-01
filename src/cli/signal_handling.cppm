@@ -49,12 +49,14 @@ void handle_sigtstp(int signum) {
  * @brief Function to handle all signals.
  */
 export void handle_signal() {
+    //setup handling for SIGINT (ctrl+c)
     struct sigaction sa_int;
     sa_int.sa_handler = handle_sigint;
     sigemptyset(&sa_int.sa_mask);
     sa_int.sa_flags = 0;
     sigaction(SIGINT, &sa_int, nullptr);
 
+    //setup handling for SIGTSTP (ctrl+z)
     struct sigaction sa_tstp;
     sa_tstp.sa_handler = handle_sigtstp;
     sigemptyset(&sa_tstp.sa_mask);

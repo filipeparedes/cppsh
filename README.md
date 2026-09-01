@@ -31,6 +31,7 @@ A Unix shell implementation in C++23 supporting built-in commands, pipelines, I/
 
 ## Requirements
 
+- Unix-based operating system (macOS or Linux) — cppsh uses Unix syscalls (`fork`, `execvp`, `dup2`, `pipe`, `sigaction`) and is not compatible with Windows
 - C++23 or later
 - CMake 3.28+
 - Ninja
@@ -95,6 +96,9 @@ cd build && ninja && ./tests
 ```
 cppsh/
 ├── src/
+│   ├── cli/
+│   │   ├── completion.cppm         # tab completion via readline
+│   │   └── signal_handling.cppm    # handle_signal(), SIGINT, SIGTSTP
 │   ├── commands/
 │   │   ├── builtins/
 │   │   │   ├── cd.cppm
@@ -104,23 +108,26 @@ cppsh/
 │   │   │   ├── export.cppm
 │   │   │   ├── unset.cppm
 │   │   │   └── source.cppm
+│   │   ├── builtin_registry.cppm   # centralized builtin registry
 │   │   └── command_entry.cppm      # command_entry_t — dispatch table entry
-│   ├── builtin_registry.cppm       # centralized builtin registry
-│   ├── completion.cppm             # tab completion via readline
-│   ├── dispatching.cppm            # dispatch() — logical pipeline evaluation
-│   ├── execution.cppm              # exec(), exec_single(), exec_pl()
-│   ├── scripting.cppm              # execute_file() — script execution
-│   ├── shell_errors.cppm           # error_code_t, shell_error_t, print()
-│   ├── shell_state.cppm            # singleton state — history, env, exit code
-│   ├── shell.cppm                  # run(), init_builtins(), get_prompt()
-│   ├── signal_handling.cppm        # handle_signal(), SIGINT, SIGTSTP
+│   ├── core/
+│   │   ├── shell_errors.cppm       # error_code_t, shell_error_t, print()
+│   │   ├── shell_state.cppm        # singleton state — history, env, exit code
+│   │   └── shell.cppm              # run(), init_builtins(), get_prompt()
+│   ├── engine/
+│   │   ├── dispatching.cppm        # dispatch() — logical pipeline evaluation
+│   │   ├── execution.cppm          # exec(), exec_single(), exec_pl()
+│   │   └── scripting.cppm          # execute_file() — script execution
 │   └── main.cpp                    # Entry point — routes interactive vs script mode
 ├── lib/
 │   ├── command.cppm                # command_t struct
 │   ├── env_entry.cppm              # env_entry_t struct
 │   ├── pipeline.cppm               # pipeline_t struct
 │   ├── parsing.cppm                # parse(), tokenize(), $VAR expansion
-│   └── utils.cppm                  # get_username(), get_hostname(), get_cwd(), iequals()
+│   └── utils/
+│       ├── io_utils.cppm           # read_input() via readline
+│       ├── str_utils.cppm          # iequals(), to_vchar(), is_valid_identifier()
+│       └── sys_utils.cppm          # get_username(), get_hostname(), get_cwd()
 ├── tests/
 │   ├── parser_test.cpp
 │   ├── dispatcher_test.cpp
@@ -140,13 +147,13 @@ main(argc, argv)
         ├── init_builtins()
         ├── handle_signal()
         ├── setup_autocompletion()
-        ├── read_input(prompt)       — readline-based
+        ├── read_input(prompt)       — readline-based (io_utils)
         ├── parse(input, env, $?)
         │     ├── tokenize()         — char-by-char, quotes, $VAR expansion
         │     ├── is_bg()            — detects &
-        │     ├── split_logical()    — splits on &&, ||
-        │     ├── split()            — splits on |
-        │     └── redirect_io()      — detects <, >, >>
+        │     ├── split()            — splits on |, &&, ||
+        │     ├── is_assignment()    — detects VAR=value
+        │     └── redirect_io()     — detects <, >, >>
         │
         └── dispatch(log_pl)
               ├── evaluate_state()   — && / || state machine
@@ -207,20 +214,20 @@ Error codes follow a structured range:
 - ✅ Quotes and escape characters
 - ✅ Migrate to C++23 modules + procedural/DOD architecture (unplanned)
 
-### v0.4-beta (WIP)
+### v0.4-beta
 - ✅ Environment variables support
 - ✅ Logical operators (&&, ||)
 - ✅ Tab completion and line editing
 - ✅ Script file execution
 
-### v1.0
-- Total refactor & architecture review
-- Subshells
-- Tilde expansion (~)
-- User Manual
-  
+### v1.0 (current)
+- ✅ Total refactor & architecture review
+- ✅ User Manual
+
 ### v1.1
 - Command aliasing (alias & unalias)
+- Subshells
+- Tilde expansion (~)
 - Built-in echo with variable expansion
 - User configuration file
 - Memory safety audit and leak detection
